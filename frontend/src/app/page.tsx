@@ -1,6 +1,7 @@
 import { api } from "@/lib/api";
 import { SectionHeading } from "@/components/ui/section-heading";
 import { ExploreLink } from "@/components/ui/explore-link";
+import { Reveal } from "@/components/ui/reveal";
 import { Hero } from "@/components/home/hero";
 import { GameRow } from "@/components/home/game-row";
 import { GenreGrid } from "@/components/home/genre-grid";
@@ -24,32 +25,38 @@ export default async function HomePage() {
       <Hero games={heroGames} />
 
       <section className="container-page py-14">
-        <SectionHeading
-          title="Bán chạy nhất"
-          description="Những tựa game được cộng đồng GameVault chọn mua nhiều nhất"
-          action={<ExploreLink href="/games?sort=sales" label="Xem tất cả" />}
-        />
+        <Reveal>
+          <SectionHeading
+            title="Bán chạy nhất"
+            description="Những tựa game được cộng đồng GameVault chọn mua nhiều nhất"
+            action={<ExploreLink href="/games?sort=sales" label="Xem tất cả" />}
+          />
+        </Reveal>
         <GameRow games={featuredGames} />
       </section>
 
       {genres.length > 0 && (
         <section className="border-y border-edge bg-surface">
           <div className="container-page py-14">
-            <SectionHeading
-              title="Khám phá theo thể loại"
-              description="Từ hành động đến chiến thuật — luôn có thứ dành cho bạn"
-            />
+            <Reveal>
+              <SectionHeading
+                title="Khám phá theo thể loại"
+                description="Từ hành động đến chiến thuật — luôn có thứ dành cho bạn"
+              />
+            </Reveal>
             <GenreGrid genres={genres} />
           </div>
         </section>
       )}
 
       <section className="container-page py-14">
-        <SectionHeading
-          title="Được đánh giá cao"
-          description="Những tựa game điểm số tốt nhất từ người đã mua"
-          action={<ExploreLink href="/games?sort=rating" label="Xem tất cả" />}
-        />
+        <Reveal>
+          <SectionHeading
+            title="Được đánh giá cao"
+            description="Những tựa game điểm số tốt nhất từ người đã mua"
+            action={<ExploreLink href="/games?sort=rating" label="Xem tất cả" />}
+          />
+        </Reveal>
         <GameRow games={ratedGames} />
       </section>
 

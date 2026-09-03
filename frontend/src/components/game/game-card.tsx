@@ -39,9 +39,9 @@ export function GameCard({ game }: { game: GameDto }) {
   return (
     <motion.div
       layout
-      className="group relative flex flex-col overflow-hidden rounded-xl border border-edge soft:border-edge-soft bg-surface transition-colors hover:border-accent/40"
-      whileHover={{ y: -4 }}
-      transition={{ type: "spring", stiffness: 300, damping: 22 }}
+      className="group relative flex flex-col overflow-hidden rounded-xl border border-edge soft:border-edge-soft bg-surface transition-all duration-300 hover:border-accent/40 hover:shadow-[0_16px_50px_rgba(0,0,0,0.45)]"
+      whileHover={{ y: -6 }}
+      transition={{ type: "spring", stiffness: 280, damping: 20 }}
     >
       <Link href={`/games/${game.slug}`} className="flex flex-col flex-1">
         <div className="relative aspect-[16/10] overflow-hidden bg-surface-2">

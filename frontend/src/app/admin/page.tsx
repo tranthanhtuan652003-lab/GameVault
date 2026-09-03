@@ -2,6 +2,7 @@
 
 import { useEffect, useId, useMemo, useState } from "react";
 import Link from "next/link";
+import { motion } from "motion/react";
 import {
   UsersThree,
   GameController,
@@ -18,6 +19,8 @@ import { api } from "@/lib/api";
 import { formatPrice, formatDateTime, formatCompactPrice } from "@/lib/format";
 import type { DashboardDto } from "@/lib/types";
 import { cn } from "@/lib/cn";
+import { Reveal, Stagger, StaggerItem } from "@/components/ui/reveal";
+import { AnimatedCounter } from "@/components/ui/animated-counter";
 
 const statusConfig: Record<string, string> = {
   Pending: "bg-amber-500/15 text-amber-400",
@@ -71,31 +74,39 @@ export default function AdminDashboardPage() {
       </div>
 
       {/* Stat cards */}
-      <div className="grid grid-cols-2 gap-4 lg:grid-cols-4">
-        <StatCard
-          icon={<UsersThree size={20} weight="fill" />}
-          label="Người dùng"
-          value={data.totalUsers?.toLocaleString() ?? "0"}
-        />
-        <StatCard
-          icon={<GameController size={20} weight="fill" />}
-          label="Game"
-          value={data.totalGames?.toLocaleString() ?? "0"}
-        />
-        <StatCard
-          icon={<Receipt size={20} weight="fill" />}
-          label="Đơn hàng"
-          value={data.totalOrders?.toLocaleString() ?? "0"}
-        />
-        <StatCard
-          icon={<Bank size={20} weight="fill" />}
-          label="Doanh thu"
-          value={formatCompactPrice(data.totalRevenue ?? 0)}
-        />
-      </div>
+      <Stagger className="grid grid-cols-2 gap-4 lg:grid-cols-4">
+        <StaggerItem>
+          <StatCard
+            icon={<UsersThree size={20} weight="fill" />}
+            label="Người dùng"
+            value={<AnimatedCounter value={data.totalUsers ?? 0} />}
+          />
+        </StaggerItem>
+        <StaggerItem>
+          <StatCard
+            icon={<GameController size={20} weight="fill" />}
+            label="Game"
+            value={<AnimatedCounter value={data.totalGames ?? 0} />}
+          />
+        </StaggerItem>
+        <StaggerItem>
+          <StatCard
+            icon={<Receipt size={20} weight="fill" />}
+            label="Đơn hàng"
+            value={<AnimatedCounter value={data.totalOrders ?? 0} />}
+          />
+        </StaggerItem>
+        <StaggerItem>
+          <StatCard
+            icon={<Bank size={20} weight="fill" />}
+            label="Doanh thu"
+            value={<AnimatedCounter value={data.totalRevenue ?? 0} format={(v) => formatCompactPrice(v)} />}
+          />
+        </StaggerItem>
+      </Stagger>
 
       {/* Revenue report */}
-      <div className="mt-6 rounded-2xl border border-edge bg-surface p-6">
+      <Reveal className="mt-6 rounded-2xl border border-edge bg-surface p-6">
         <div className="mb-5 flex flex-wrap items-start justify-between gap-4">
           <div>
             <h2 className="flex items-center gap-2 font-bold text-ink">
@@ -140,11 +151,12 @@ export default function AdminDashboardPage() {
         </div>
 
         <RevenueChart data={data.recentSales} />
-      </div>
+      </Reveal>
 
-      <div className="mt-6 grid gap-6 lg:grid-cols-2">
+      <Stagger className="mt-6 grid gap-6 lg:grid-cols-2">
         {/* Popular games */}
-        <div className="rounded-2xl border border-edge bg-surface p-6">
+        <StaggerItem>
+        <div className="rounded-2xl border border-edge bg-surface p-6 transition-all duration-300 hover:border-accent/30">
           <h2 className="mb-4 flex items-center gap-2 font-bold text-ink">
             <GameController size={18} className="text-accent" /> Game bán chạy
           </h2>
@@ -174,9 +186,11 @@ export default function AdminDashboardPage() {
             <p className="py-10 text-center text-sm text-ink-soft">Chưa có dữ liệu</p>
           )}
         </div>
+        </StaggerItem>
 
         {/* Recent orders */}
-        <div className="rounded-2xl border border-edge bg-surface p-6">
+        <StaggerItem>
+        <div className="rounded-2xl border border-edge bg-surface p-6 transition-all duration-300 hover:border-accent/30">
           <div className="mb-4 flex items-center justify-between">
             <h2 className="font-bold text-ink">Đơn hàng gần đây</h2>
             <Link href="/admin/orders" className="text-sm font-semibold text-accent hover:underline">
@@ -227,7 +241,8 @@ export default function AdminDashboardPage() {
             <p className="py-10 text-center text-sm text-ink-soft">Chưa có đơn hàng</p>
           )}
         </div>
-      </div>
+        </StaggerItem>
+      </Stagger>
     </div>
   );
 }
@@ -462,7 +477,7 @@ function StatCard({
 }: {
   icon: React.ReactNode;
   label: string;
-  value: string;
+  value: React.ReactNode;
 }) {
   return (
     <div className="rounded-2xl border border-edge bg-surface p-5">

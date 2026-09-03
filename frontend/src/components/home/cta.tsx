@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import { Reveal, Stagger, StaggerItem } from "@/components/ui/reveal";
 import {
   ArrowRight,
   ShieldCheck,
@@ -31,7 +32,7 @@ export function CTASection() {
     <section className="border-t border-edge bg-surface">
       <div className="container-page py-20">
         <div className="grid items-center gap-12 lg:grid-cols-2">
-          <div>
+          <Reveal>
             <h2 className="text-balance text-3xl font-extrabold tracking-tight text-ink sm:text-4xl">
               Sẵn sàng mở siêu phẩm của{" "}
               <span className="text-accent">bạn?</span>
@@ -55,24 +56,23 @@ export function CTASection() {
                 Xem kho game
               </Link>
             </div>
-          </div>
+          </Reveal>
 
-          <div className="grid gap-4 sm:grid-cols-3 lg:grid-cols-1">
+          <Stagger className="grid gap-4 sm:grid-cols-3 lg:grid-cols-1">
             {features.map((f) => (
-              <div
-                key={f.title}
-                className="flex items-start gap-4 rounded-xl border border-edge bg-canvas p-5"
-              >
-                <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-accent/10 text-accent">
-                  <f.icon size={20} weight="fill" />
-                </span>
-                <div>
-                  <h3 className="font-semibold text-ink">{f.title}</h3>
-                  <p className="mt-0.5 text-sm text-ink-soft">{f.desc}</p>
+              <StaggerItem key={f.title}>
+                <div className="flex items-start gap-4 rounded-xl border border-edge bg-canvas p-5 transition-all duration-300 hover:-translate-y-1 hover:border-accent/40 hover:shadow-[0_14px_40px_rgba(0,0,0,0.35)]">
+                  <span className="flex h-10 w-10 shrink-0 items-center justify-center rounded-lg bg-accent/10 text-accent">
+                    <f.icon size={20} weight="fill" />
+                  </span>
+                  <div>
+                    <h3 className="font-semibold text-ink">{f.title}</h3>
+                    <p className="mt-0.5 text-sm text-ink-soft">{f.desc}</p>
+                  </div>
                 </div>
-              </div>
+              </StaggerItem>
             ))}
-          </div>
+          </Stagger>
         </div>
       </div>
     </section>

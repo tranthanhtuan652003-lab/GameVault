@@ -8,6 +8,7 @@ import { useAuth } from "@/lib/auth";
 import { useToast } from "@/components/ui/toast";
 import { Button } from "@/components/ui/button";
 import { StarRating } from "@/components/ui/star-rating";
+import { Reveal } from "@/components/ui/reveal";
 import { formatDate } from "@/lib/format";
 import { cn } from "@/lib/cn";
 
@@ -60,7 +61,7 @@ export function ReviewsSection({
   const bars = [5, 4, 3, 2, 1];
 
   return (
-    <section className="mt-16 border-t border-edge pt-10">
+    <Reveal className="mt-16 border-t border-edge pt-10">
       <h2 className="text-2xl font-bold text-ink">Đánh giá</h2>
 
       <div className="mt-6 grid gap-8 lg:grid-cols-[320px_1fr]">
@@ -169,7 +170,7 @@ export function ReviewsSection({
           )}
         </div>
       </div>
-    </section>
+    </Reveal>
   );
 }
 

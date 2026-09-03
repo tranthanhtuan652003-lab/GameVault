@@ -1,5 +1,6 @@
 import type { GameDto } from "@/lib/types";
 import { GameCard } from "@/components/game/game-card";
+import { Stagger, StaggerItem } from "@/components/ui/reveal";
 
 export function GameRow({ games }: { games: GameDto[] }) {
   if (!games.length) {
@@ -10,10 +11,12 @@ export function GameRow({ games }: { games: GameDto[] }) {
     );
   }
   return (
-    <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4">
+    <Stagger className="grid grid-cols-2 gap-4 sm:grid-cols-3 md:grid-cols-4 lg:grid-cols-4">
       {games.map((game) => (
-        <GameCard key={game.id} game={game} />
+        <StaggerItem key={game.id}>
+          <GameCard game={game} />
+        </StaggerItem>
       ))}
-    </div>
+    </Stagger>
   );
 }

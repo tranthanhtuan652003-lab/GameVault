@@ -10,6 +10,7 @@ import { GameCard } from "@/components/game/game-card";
 import { GameCardSkeleton } from "@/components/game/game-card-skeleton";
 import { Pagination } from "@/components/ui/pagination";
 import { Filters } from "@/components/games/filter-sidebar";
+import { Stagger, StaggerItem } from "@/components/ui/reveal";
 import type { GameListParams } from "@/lib/types";
 
 const sortOptions = [
@@ -179,11 +180,13 @@ export function GamesExplorer({ initialQuery }: { initialQuery: GameListParams }
             </button>
           </div>
         ) : (
-          <div className="grid grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-4">
+          <Stagger className="grid grid-cols-2 gap-4 sm:grid-cols-3 xl:grid-cols-4">
             {data.items.map((game) => (
-              <GameCard key={game.id} game={game} />
+              <StaggerItem key={game.id}>
+                <GameCard game={game} />
+              </StaggerItem>
             ))}
-          </div>
+          </Stagger>
         )}
 
         {data && data.totalPages > 1 && (

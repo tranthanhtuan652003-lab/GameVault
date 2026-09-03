@@ -1,5 +1,8 @@
+"use client";
+
 import Link from "next/link";
 import type { GenreDto } from "@/lib/types";
+import { Stagger, StaggerItem } from "@/components/ui/reveal";
 
 const genreColors = [
   "from-emerald-500/20 to-emerald-500/5",
@@ -13,21 +16,22 @@ const genreColors = [
 export function GenreGrid({ genres }: { genres: GenreDto[] }) {
   const shown = genres.slice(0, 12);
   return (
-    <div className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
+    <Stagger className="grid grid-cols-2 gap-3 sm:grid-cols-3 lg:grid-cols-6">
       {shown.map((genre, i) => (
-        <Link
-          key={genre.id}
-          href={`/games?genre=${genre.slug}`}
-          className={`group flex h-24 flex-col justify-between rounded-xl border border-edge bg-gradient-to-br p-4 transition hover:border-accent/50 ${
-            genreColors[i % genreColors.length]
-          }`}
-        >
-          <span className="text-sm font-semibold text-ink group-hover:text-accent">
-            {genre.name}
-          </span>
-          <span className="text-xs text-ink-soft">Khám phá →</span>
-        </Link>
+        <StaggerItem key={genre.id}>
+          <Link
+            href={`/games?genre=${genre.slug}`}
+            className={`group flex h-24 flex-col justify-between rounded-xl border border-edge bg-gradient-to-br p-4 transition-all duration-300 hover:-translate-y-0.5 hover:border-accent/50 hover:shadow-[0_8px_30px_rgba(16,185,129,0.12)] ${
+              genreColors[i % genreColors.length]
+            }`}
+          >
+            <span className="text-sm font-semibold text-ink group-hover:text-accent">
+              {genre.name}
+            </span>
+            <span className="text-xs text-ink-soft">Khám phá →</span>
+          </Link>
+        </StaggerItem>
       ))}
-    </div>
+    </Stagger>
   );
 }
