@@ -39,6 +39,8 @@ public class AdminService : IAdminService
 
         // 7 ngày gần nhất
         var start = DateTime.UtcNow.Date.AddDays(-6);
+        var prevStart = start.AddDays(-7);
+
         var sales = await _db.Orders
             .Where(o => o.CreatedAt >= start && o.Status != "Cancelled")
             .ToListAsync();
@@ -55,6 +57,17 @@ public class AdminService : IAdminService
             };
         }).ToList();
 
+        // 7 ngày trước đó (để so sánh % tăng/giảm)
+        var previousRevenue = await _db.Orders
+            .Where(o => o.CreatedAt >= prevStart && o.CreatedAt < start && o.Status != "Cancelled")
+            .SumAsync(o => (decimal?)o.Total) ?? 0;
+
+        var currentRevenue = recentSales.Sum(s => s.Revenue);
+        var currentOrderCount = recentSales.Sum(s => s.Orders);
+        var averageOrderValue = currentOrderCount > 0
+            ? currentRevenue / currentOrderCount
+            : 0;
+
         var popularGames = await _db.OrderDetails
             .GroupBy(d => d.GameTitle)
             .Select(g => new PopularGame
@@ -67,6 +80,8 @@ public class AdminService : IAdminService
             .ToListAsync();
 
         var recentOrders = await _db.Orders
+            .Include(o => o.User)
+            .Include(o => o.OrderDetails)
             .OrderByDescending(o => o.CreatedAt)
             .Take(8)
             .Select(o => new RecentOrder
@@ -74,9 +89,17 @@ public class AdminService : IAdminService
                 Id = o.Id,
                 OrderNumber = o.OrderNumber,
                 CustomerName = o.CustomerName,
+                UserName = o.User.UserName,
                 Total = o.Total,
                 Status = o.Status,
-                CreatedAt = o.CreatedAt
+                CreatedAt = o.CreatedAt,
+                Items = o.OrderDetails
+                    .Select(d => new RecentOrderItem
+                    {
+                        GameTitle = d.GameTitle,
+                        Quantity = d.Quantity
+                    })
+                    .ToList()
             })
             .ToListAsync();
 
@@ -86,6 +109,8 @@ public class AdminService : IAdminService
             TotalGames = totalGames,
             TotalOrders = totalOrders,
             TotalRevenue = totalRevenue,
+            PreviousRevenue = previousRevenue,
+            AverageOrderValue = averageOrderValue,
             RecentSales = recentSales,
             PopularGames = popularGames,
             RecentOrders = recentOrders

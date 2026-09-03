@@ -169,15 +169,19 @@ export interface DashboardDto {
   totalGames: number;
   totalOrders: number;
   totalRevenue: number;
+  previousRevenue: number;
+  averageOrderValue: number;
   recentSales: { label: string; revenue: number; orders: number }[];
   popularGames: { title: string; sales: number }[];
   recentOrders: {
     id: number;
     orderNumber: string;
     customerName: string;
+    userName: string;
     total: number;
     status: string;
     createdAt: string;
+    items: { gameTitle: string; quantity: number }[];
   }[];
 }
 

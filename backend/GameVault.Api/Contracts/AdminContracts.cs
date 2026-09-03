@@ -6,6 +6,8 @@ public class DashboardDto
     public int TotalGames { get; set; }
     public int TotalOrders { get; set; }
     public decimal TotalRevenue { get; set; }
+    public decimal PreviousRevenue { get; set; }
+    public decimal AverageOrderValue { get; set; }
     public List<SalesPoint> RecentSales { get; set; } = new();
     public List<PopularGame> PopularGames { get; set; } = new();
     public List<RecentOrder> RecentOrders { get; set; } = new();
@@ -29,7 +31,15 @@ public class RecentOrder
     public int Id { get; set; }
     public string OrderNumber { get; set; } = string.Empty;
     public string CustomerName { get; set; } = string.Empty;
+    public string UserName { get; set; } = string.Empty;
     public decimal Total { get; set; }
     public string Status { get; set; } = string.Empty;
     public DateTime CreatedAt { get; set; }
+    public List<RecentOrderItem> Items { get; set; } = new();
+}
+
+public class RecentOrderItem
+{
+    public string GameTitle { get; set; } = string.Empty;
+    public int Quantity { get; set; }
 }
