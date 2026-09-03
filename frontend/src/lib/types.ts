@@ -12,6 +12,7 @@ export interface ApiError {
 }
 
 export interface LoginResponse {
+  id: number;
   token: string;
   userName: string;
   email: string;

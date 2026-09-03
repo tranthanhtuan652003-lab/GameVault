@@ -134,6 +134,7 @@ public class AuthService : IAuthService
 
     private LoginResponse BuildResponse(User user, string token) => new()
     {
+        Id = user.Id,
         Token = token,
         UserName = user.UserName,
         Email = user.Email,

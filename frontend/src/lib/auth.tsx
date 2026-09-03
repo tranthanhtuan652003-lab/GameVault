@@ -64,7 +64,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       localStorage.setItem(TOKEN_KEY, t);
       setToken(t);
       const u: UserDto = {
-        id: 0,
+        id: res.id,
         userName: res.userName,
         email: res.email,
         fullName: res.fullName,

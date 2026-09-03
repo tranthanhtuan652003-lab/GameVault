@@ -2,6 +2,7 @@ using GameVault.Api.Contracts;
 using GameVault.Api.Data;
 using GameVault.Api.Models;
 using Microsoft.EntityFrameworkCore;
+using System.Linq.Expressions;
 
 namespace GameVault.Api.Services;
 
@@ -231,17 +232,16 @@ public class GameService : IGameService
         return (true, null);
     }
 
-    private async Task<Game?> LoadGameAsync(Func<Game, bool> predicate)
+    private async Task<Game?> LoadGameAsync(Expression<Func<Game, bool>> predicate)
     {
-        var games = await _db.Games
+        return await _db.Games
             .Include(g => g.GameGenres).ThenInclude(gg => gg.Genre)
             .Include(g => g.GamePlatforms).ThenInclude(gp => gp.Platform)
             .Include(g => g.GameDevelopers).ThenInclude(gd => gd.Developer)
             .Include(g => g.GamePublishers).ThenInclude(gp => gp.Publisher)
             .Include(g => g.GameImages)
             .Where(g => g.IsActive)
-            .ToListAsync();
-        return games.FirstOrDefault(predicate);
+            .FirstOrDefaultAsync(predicate);
     }
 
     private void ApplyRelations(Game game, GameCreateRequest request)

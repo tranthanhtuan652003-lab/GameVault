@@ -41,10 +41,13 @@ public class OrderService : IOrderService
                 return (false, $"Game '{item.Game.Title}' không còn khả dụng.", null);
         }
 
-        var subtotal = cart.Items.Sum(i => i.UnitPrice * i.Quantity);
+        // Pricing: CartItem.UnitPrice stores the locked effective price at add-time
+        // (discount price if discounted, else base price). Orders always charge this
+        // locked price so the amount can never drift from what the cart displayed.
+        var subtotal = cart.Items.Sum(i => i.Game.Price * i.Quantity);
         var discount = cart.Items.Sum(i =>
-            (i.UnitPrice - (i.Game.DiscountPrice ?? i.UnitPrice)) * i.Quantity);
-        var total = subtotal - discount;
+            (i.Game.Price - i.UnitPrice) * i.Quantity);
+        var total = cart.Items.Sum(i => i.UnitPrice * i.Quantity);
 
         var order = new Order
         {
@@ -70,8 +73,8 @@ public class OrderService : IOrderService
                 CoverImage = item.Game.CoverImage,
                 Quantity = item.Quantity,
                 UnitPrice = item.UnitPrice,
-                Discount = (item.UnitPrice - (item.Game.DiscountPrice ?? item.UnitPrice)) * item.Quantity,
-                LineTotal = (item.Game.DiscountPrice ?? item.UnitPrice) * item.Quantity
+                Discount = (item.Game.Price - item.UnitPrice) * item.Quantity,
+                LineTotal = item.UnitPrice * item.Quantity
             });
 
             // Tăng sales count

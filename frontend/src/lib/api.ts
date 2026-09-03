@@ -67,7 +67,10 @@ async function request<T>(path: string, opts: RequestOptions = {}): Promise<T> {
       headers,
       body: body !== undefined ? JSON.stringify(body) : undefined,
       signal,
-      cache: "no-store",
+      // Only bypass caching for authenticated requests (user-specific data must
+      // always be fresh) and mutations. Public GETs stay cacheable so Next.js
+      // ISR / revalidate can work as configured on server-side pages.
+      ...(token || method !== "GET" ? { cache: "no-store" as const } : {}),
     });
   } catch (err) {
     const reason = err instanceof Error ? err.message : "Network error";
