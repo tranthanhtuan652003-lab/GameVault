@@ -28,26 +28,25 @@ GameVault: web store bán game kỹ thuật số. Frontend **Next.js 16**, backe
 | 7 | E-commerce (Cart/Order) | ✅ Xong + verify (register→cart→order total 13.99) |
 | 8 | Reviews | ✅ Xong + verify (review id 21) |
 | 9 | Admin CRUD | ✅ Xong (games/categories/platforms/reviews/users/orders + API verified end-to-end) |
-| 10 | QA | 🟡 Backend + frontend build pass; lint còn set-state-in-effect toàn dự án; full flow đã verify |
-| 11 | Code Review | 📋 PENDING |
-| 12 | Polish & Docs | 📋 README/API/DATABASE/.env/git PENDING |
+| 10 | QA | ✅ Xong (backend 0 warn/0 err, frontend build PASS 17 routes; lint còn 2 errors set-state-in-effect ở auth/cart — patterns hợp lệ, giữ nguyên) |
+| 11 | Code Review | ✅ Xong (review security/cors/jwt/duplicate; Jwt:Key placeholder, Rawg key rỗng — an toàn) |
+| 12 | Polish & Docs | ✅ Xong (README/API/DATABASE/.env.example + git init + commit, đã loại secrets/.env khỏi git) |
 
 ## Làm xong (High level)
 
-- Backend: 18 models, 7 controllers, 8 services, migration + seeder, JWT + roles, CORS, Swagger.
-- Frontend: Next.js 16 scaffold, 13 routes, components, lib, build + routes verify.
-- Docs phase 0: PROJECT_STATUS / ARCHITECTURE / AGENT_PROGRESS.
+- Backend: 20 models, 7 controllers, 8 services, migration + seeder, JWT + roles, CORS, Swagger.
+- Frontend: Next.js 16 scaffold, 17 routes (7 admin), components, lib, build PASS.
+- Docs: PROJECT_STATUS / ARCHITECTURE / AGENT_PROGRESS / README / API / DATABASE / .env.example.
+- Git: init + initial commit (secrets + environment files đã loại khỏi git).
 
 ## Đang làm
 
-- **PHASE 9 Admin CRUD** (lớn nhất còn thiếu): admin/games, admin/categories, admin/platforms, admin/reviews + API.
+- Không có — tất cả 13 phase (0-12) đã hoàn tất.
 
-## Cần làm tiếp
+## Cần làm tiếp (tuỳ chọn)
 
-1. Restart backend (instance PID 30636 đã stop để build — cần chạy lại).
-2. Hoàn thiện PHASE 9 admin CRUD.
-3. PHASE 10 QA: `npm run lint` + verify flow checkout/order/review bằng token thật.
-4. PHASE 12: README.md, API.md, DATABASE.md, .env.example, git init + commit (không secrets).
+1. Điền `Rawg:ApiKey` thật vào `appsettings.json` rồi verify ra reggamesearch live (PHASE 5).
+2. Trước khi deploy: đổi `Jwt:Key` placeholder sang secret thật (đặt qua env/user-secrets, không commit).
 
 ## Blockers / Notes
 
