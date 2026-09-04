@@ -91,6 +91,7 @@ export interface CartItemDto {
   id: number;
   gameId: number;
   gameTitle: string;
+  gameSlug: string;
   coverImage: string;
   quantity: number;
   unitPrice: number;
@@ -119,6 +120,7 @@ export interface WishlistItemDto {
 export interface OrderItemDto {
   gameId: number;
   gameTitle: string;
+  gameSlug: string;
   coverImage: string;
   quantity: number;
   unitPrice: number;

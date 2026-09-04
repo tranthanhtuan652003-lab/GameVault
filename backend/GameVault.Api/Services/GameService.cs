@@ -121,15 +121,15 @@ public class GameService : IGameService
 
         var game = new Game
         {
-            Title = request.Title.Trim(),
+            Title = request.Title?.Trim() ?? string.Empty,
             Slug = slug,
-            Description = request.Description.Trim(),
+            Description = request.Description?.Trim() ?? string.Empty,
             Price = request.Price,
             DiscountPrice = request.DiscountPrice,
             ReleaseDate = request.ReleaseDate,
-            CoverImage = request.CoverImage.Trim(),
-            TrailerUrl = request.TrailerUrl.Trim(),
-            SystemRequirements = request.SystemRequirements.Trim(),
+            CoverImage = request.CoverImage?.Trim() ?? string.Empty,
+            TrailerUrl = request.TrailerUrl?.Trim() ?? string.Empty,
+            SystemRequirements = request.SystemRequirements?.Trim() ?? string.Empty,
             CreatedAt = DateTime.UtcNow,
             IsActive = true
         };
@@ -153,14 +153,14 @@ public class GameService : IGameService
 
         if (game == null) return (false, "Không tìm thấy game.", null);
 
-        game.Title = request.Title.Trim();
-        game.Description = request.Description.Trim();
+        game.Title = request.Title?.Trim() ?? string.Empty;
+        game.Description = request.Description?.Trim() ?? string.Empty;
         game.Price = request.Price;
         game.DiscountPrice = request.DiscountPrice;
         game.ReleaseDate = request.ReleaseDate;
-        game.CoverImage = request.CoverImage.Trim();
-        game.TrailerUrl = request.TrailerUrl.Trim();
-        game.SystemRequirements = request.SystemRequirements.Trim();
+        game.CoverImage = request.CoverImage?.Trim() ?? string.Empty;
+        game.TrailerUrl = request.TrailerUrl?.Trim() ?? string.Empty;
+        game.SystemRequirements = request.SystemRequirements?.Trim() ?? string.Empty;
 
         // Xóa relations cũ và thêm mới
         _db.GameGenres.RemoveRange(game.GameGenres);

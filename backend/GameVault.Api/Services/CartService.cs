@@ -139,6 +139,7 @@ public class CartService : ICartService
         Id = item.Id,
         GameId = item.GameId,
         GameTitle = item.Game.Title,
+        GameSlug = item.Game.Slug,
         CoverImage = item.Game.CoverImage,
         Quantity = item.Quantity,
         // nominal base price (from the game) for display

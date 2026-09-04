@@ -1,7 +1,7 @@
 "use client";
 
 import { useCallback, useEffect, useState } from "react";
-import { useRouter } from "next/navigation";
+import { useRouter, useSearchParams } from "next/navigation";
 import { motion, AnimatePresence } from "motion/react";
 import { FunnelSimple, X } from "@phosphor-icons/react";
 import type { GameDto, GenreDto, PlatformDto, PagedResult } from "@/lib/types";
@@ -12,6 +12,7 @@ import { Pagination } from "@/components/ui/pagination";
 import { Filters } from "@/components/games/filter-sidebar";
 import { Stagger, StaggerItem } from "@/components/ui/reveal";
 import type { GameListParams } from "@/lib/types";
+import { gamesQueryFromParams } from "@/lib/games-params";
 
 const sortOptions = [
   { value: "newest", label: "Mới nhất" },
@@ -23,6 +24,7 @@ const sortOptions = [
 
 export function GamesExplorer({ initialQuery }: { initialQuery: GameListParams }) {
   const router = useRouter();
+  const searchParams = useSearchParams();
   const [filters, setFilters] = useState<GameListParams>(initialQuery);
   const [data, setData] = useState<PagedResult<GameDto> | null>(null);
   const [loading, setLoading] = useState(true);
@@ -45,6 +47,24 @@ export function GamesExplorer({ initialQuery }: { initialQuery: GameListParams }
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
   }, [filters]);
+
+  // Đồng bộ bộ lọc khi URL thay đổi từ bên ngoài (navbar search, genre link, back/forward)
+  // để tránh grid hiển thị kết quả cũ không khớp URL.
+  useEffect(() => {
+    const urlQuery = gamesQueryFromParams(Object.fromEntries(searchParams.entries())).query;
+    const changed =
+      (filters.search ?? "") !== (urlQuery.search ?? "") ||
+      (filters.genre ?? "") !== (urlQuery.genre ?? "") ||
+      (filters.platform ?? "") !== (urlQuery.platform ?? "") ||
+      (filters.sort ?? "newest") !== (urlQuery.sort ?? "newest") ||
+      (filters.page ?? 1) !== (urlQuery.page ?? 1);
+    if (changed) {
+      // eslint-disable-next-line react-hooks/set-state-in-effect
+      setFilters(urlQuery);
+      setLoading(true);
+    }
+    // eslint-disable-next-line react-hooks/exhaustive-deps
+  }, [searchParams]);
 
   const applyFilters = useCallback(
     (patch: Partial<GameListParams>) => {

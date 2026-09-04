@@ -2,7 +2,7 @@
 
 import Image from "next/image";
 import Link from "next/link";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 import {
   Heart,
   ShoppingCartSimple,
@@ -36,6 +36,20 @@ export function GameDetailClient({
   const [wishLoading, setWishLoading] = useState(false);
   const [wished, setWished] = useState(false);
   const [activeImage, setActiveImage] = useState(0);
+
+  useEffect(() => {
+    if (!isAuthenticated || !token) return;
+    let cancelled = false;
+    api.wishlist
+      .check(game.id, token)
+      .then((res) => {
+        if (!cancelled) setWished(res.isInWishlist);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [game.id, isAuthenticated, token]);
 
   const images = game.images.length ? game.images : [game.coverImage];
 

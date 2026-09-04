@@ -26,8 +26,10 @@ export default function LoginPage() {
     try {
       await login(userName, password);
       toast("Đăng nhập thành công");
-      const redirect = searchParams.get("redirect");
-      router.push(redirect || "/");
+      const redirectParam = searchParams.get("redirect");
+      const redirect =
+        redirectParam && /^\/(?![/\\])/.test(redirectParam) ? redirectParam : "/";
+      router.push(redirect);
     } catch (err) {
       const msg =
         err instanceof ApiError ? err.message : "Đăng nhập thất bại, vui lòng thử lại";

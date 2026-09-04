@@ -64,7 +64,7 @@ export default function CartPage() {
                 <div className="flex flex-1 flex-col">
                   <div className="flex items-start justify-between">
                     <Link
-                      href={`/games/${item.gameId}`}
+                      href={`/games/${item.gameSlug}`}
                       className="font-semibold text-ink hover:text-accent"
                     >
                       {item.gameTitle}

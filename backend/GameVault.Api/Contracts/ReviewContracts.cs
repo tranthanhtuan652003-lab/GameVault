@@ -1,5 +1,7 @@
 namespace GameVault.Api.Contracts;
 
+using System.ComponentModel.DataAnnotations;
+
 public class ReviewDto
 {
     public int Id { get; set; }
@@ -14,12 +16,14 @@ public class ReviewDto
 
 public class CreateReviewRequest
 {
+    [Range(1, 5, ErrorMessage = "Đánh giá phải từ 1 đến 5 sao.")]
     public int Rating { get; set; }
     public string Comment { get; set; } = string.Empty;
 }
 
 public class UpdateReviewRequest
 {
+    [Range(1, 5, ErrorMessage = "Đánh giá phải từ 1 đến 5 sao.")]
     public int Rating { get; set; }
     public string Comment { get; set; } = string.Empty;
 }

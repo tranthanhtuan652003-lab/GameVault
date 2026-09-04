@@ -53,10 +53,10 @@ public class OrderService : IOrderService
         {
             OrderNumber = GenerateOrderNumber(),
             UserId = userId,
-            CustomerName = request.CustomerName.Trim(),
-            Email = request.Email.Trim(),
-            Phone = request.Phone.Trim(),
-            Address = request.Address.Trim(),
+            CustomerName = request.CustomerName?.Trim() ?? string.Empty,
+            Email = request.Email?.Trim() ?? string.Empty,
+            Phone = request.Phone?.Trim() ?? string.Empty,
+            Address = request.Address?.Trim() ?? string.Empty,
             Subtotal = subtotal,
             Discount = discount,
             Total = total,
@@ -70,6 +70,7 @@ public class OrderService : IOrderService
             {
                 GameId = item.GameId,
                 GameTitle = item.Game.Title,
+                Slug = item.Game.Slug,
                 CoverImage = item.Game.CoverImage,
                 Quantity = item.Quantity,
                 UnitPrice = item.UnitPrice,
@@ -168,6 +169,7 @@ public class OrderService : IOrderService
         {
             GameId = d.GameId,
             GameTitle = d.GameTitle,
+            GameSlug = d.Slug,
             CoverImage = d.CoverImage,
             Quantity = d.Quantity,
             UnitPrice = d.UnitPrice,

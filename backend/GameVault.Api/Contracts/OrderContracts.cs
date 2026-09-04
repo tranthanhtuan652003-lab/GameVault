@@ -1,9 +1,12 @@
+using System.ComponentModel.DataAnnotations;
+
 namespace GameVault.Api.Contracts;
 
 public class OrderItemDto
 {
     public int GameId { get; set; }
     public string GameTitle { get; set; } = string.Empty;
+    public string GameSlug { get; set; } = string.Empty;
     public string CoverImage { get; set; } = string.Empty;
     public int Quantity { get; set; }
     public decimal UnitPrice { get; set; }
@@ -13,9 +16,13 @@ public class OrderItemDto
 
 public class CreateOrderRequest
 {
+    [Required(AllowEmptyStrings = false, ErrorMessage = "Tên người nhận là bắt buộc.")]
     public string CustomerName { get; set; } = string.Empty;
+    [Required(AllowEmptyStrings = false, ErrorMessage = "Email là bắt buộc.")]
+    [EmailAddress(ErrorMessage = "Email không hợp lệ.")]
     public string Email { get; set; } = string.Empty;
     public string Phone { get; set; } = string.Empty;
+    [Required(AllowEmptyStrings = false, ErrorMessage = "Địa chỉ là bắt buộc.")]
     public string Address { get; set; } = string.Empty;
     public string PaymentMethod { get; set; } = "Demo";
 }

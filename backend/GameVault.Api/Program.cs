@@ -1,7 +1,10 @@
 using System.Text;
 using GameVault.Api.Data;
+using GameVault.Api.Helpers;
+using GameVault.Api.Middlewares;
 using GameVault.Api.Services;
 using Microsoft.AspNetCore.Authentication.JwtBearer;
+using Microsoft.AspNetCore.Mvc;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
@@ -22,10 +25,31 @@ builder.Services.AddScoped<IAdminService, AdminService>();
 builder.Services.AddHttpClient<IExternalGameApiService, ExternalGameApiService>();
 
 // Controllers
-builder.Services.AddControllers();
+builder.Services.AddControllers()
+    .ConfigureApiBehaviorOptions(options =>
+    {
+        // Trả lỗi validation theo định dạng Res để frontend parse nhất quán.
+        options.InvalidModelStateResponseFactory = context =>
+        {
+            var errors = context.ModelState
+                .Where(e => e.Value?.Errors.Count > 0)
+                .SelectMany(e => e.Value!.Errors.Select(err => err.ErrorMessage))
+                .Where(m => !string.IsNullOrWhiteSpace(m))
+                .Distinct()
+                .ToArray();
+            var message = errors.FirstOrDefault() ?? "Dữ liệu gửi lên không hợp lệ.";
+            return new BadRequestObjectResult(Res.Fail(message, errors));
+        };
+    });
 
 // JWT Authentication
-var jwtKey = builder.Configuration["Jwt:Key"]!;
+var jwtKey = builder.Configuration["Jwt:Key"] ?? builder.Configuration["JWT_KEY"] ??
+    throw new InvalidOperationException("JWT signing key (Jwt:Key / JWT_KEY) is not configured.");
+if (!builder.Environment.IsDevelopment() &&
+    (string.IsNullOrWhiteSpace(jwtKey) || jwtKey.StartsWith("CHANGE_ME", StringComparison.Ordinal)))
+{
+    throw new InvalidOperationException("Production JWT signing key must be set via the JWT_KEY environment variable and cannot use the development placeholder.");
+}
 builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
     .AddJwtBearer(options =>
     {
@@ -97,46 +121,17 @@ using (var scope = app.Services.CreateScope())
     await DbSeeder.SeedAsync(app.Services);
 }
 
-app.UseSwagger();
-app.UseSwaggerUI(c =>
+app.UseMiddleware<ExceptionHandlingMiddleware>();
+
+// Swagger chỉ bật ở môi trường Development
+if (app.Environment.IsDevelopment())
 {
-    c.SwaggerEndpoint("/swagger/v1/swagger.json", "GameVault API v1");
-    c.HeadContent = @"
-<script>
-(function () {
-    var attempts = 0;
-    function tryAuth() {
-        attempts++;
-        if (window.ui && window.ui.authActions) {
-            fetch('/api/Auth/login', {
-                method: 'POST',
-                headers: { 'Content-Type': 'application/json' },
-                body: JSON.stringify({ userName: 'admin', password: 'Admin@123' })
-            })
-            .then(function (r) { return r.json(); })
-            .then(function (json) {
-                var token = json && json.data && json.data.token;
-                if (token) {
-                    window.ui.authActions.authorize({
-                        Bearer: {
-                            name: 'Bearer',
-                            schema: { type: 'http', scheme: 'bearer', bearerFormat: 'JWT' },
-                            value: token
-                        }
-                    });
-                    console.log('[GameVault] Auto-authorized as admin');
-                }
-            })
-            .catch(function (e) { console.warn('[GameVault] auto-auth failed', e); });
-        } else if (attempts < 20) {
-            setTimeout(tryAuth, 500);
-        }
-    }
-    setTimeout(tryAuth, 500);
-})();
-</script>
-";
-});
+    app.UseSwagger();
+    app.UseSwaggerUI(c =>
+    {
+        c.SwaggerEndpoint("/swagger/v1/swagger.json", "GameVault API v1");
+    });
+}
 
 app.UseCors("GameVaultCors");
 

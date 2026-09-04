@@ -83,7 +83,7 @@ export function CartSheet() {
                         <div className="flex flex-1 flex-col">
                           <div className="flex items-start justify-between gap-2">
                             <Link
-                              href={`/games/${item.id}`}
+                              href={`/games/${item.gameSlug}`}
                               className="text-sm font-medium text-ink line-clamp-2 hover:text-accent"
                             >
                               {item.gameTitle}

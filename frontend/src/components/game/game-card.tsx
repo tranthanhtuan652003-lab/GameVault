@@ -11,7 +11,7 @@ import { useCart } from "@/lib/cart";
 import { useAuth } from "@/lib/auth";
 import { useToast } from "@/components/ui/toast";
 import { api } from "@/lib/api";
-import { useState } from "react";
+import { useEffect, useState } from "react";
 
 export function GameCard({ game }: { game: GameDto }) {
   const { addToCart } = useCart();
@@ -111,6 +111,20 @@ function WishlistButton({ gameId }: { gameId: number }) {
   const { isAuthenticated, token } = useAuth();
   const { toast } = useToast();
   const [inWishlist, setInWishlist] = useState(false);
+
+  useEffect(() => {
+    if (!isAuthenticated || !token) return;
+    let cancelled = false;
+    api.wishlist
+      .check(gameId, token)
+      .then((res) => {
+        if (!cancelled) setInWishlist(res.isInWishlist);
+      })
+      .catch(() => {});
+    return () => {
+      cancelled = true;
+    };
+  }, [gameId, isAuthenticated, token]);
 
   return (
     <button

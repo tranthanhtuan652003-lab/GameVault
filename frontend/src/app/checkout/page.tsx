@@ -21,7 +21,7 @@ const paymentMethods = [
 ];
 
 export default function CheckoutPage() {
-  const { cart } = useCart();
+  const { cart, refreshCart } = useCart();
   const { isAuthenticated, token, user } = useAuth();
   const { toast } = useToast();
   const router = useRouter();
@@ -80,6 +80,7 @@ export default function CheckoutPage() {
       );
       setOrder(created);
       toast("Đặt hàng thành công");
+      await refreshCart();
     } catch (err) {
       const msg =
         err instanceof ApiError ? err.message : "Có lỗi xảy ra khi thanh toán";

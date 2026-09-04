@@ -22,9 +22,9 @@ public class AuthService : IAuthService
 
     public async Task<(bool Success, string? Error, LoginResponse? Data)> RegisterAsync(RegisterRequest request)
     {
-        request.UserName = request.UserName.Trim();
-        request.Email = request.Email.Trim().ToLowerInvariant();
-        request.FullName = request.FullName.Trim();
+        request.UserName = request.UserName?.Trim() ?? string.Empty;
+        request.Email = request.Email?.Trim().ToLowerInvariant() ?? string.Empty;
+        request.FullName = request.FullName?.Trim() ?? string.Empty;
 
         if (string.IsNullOrWhiteSpace(request.UserName) || request.UserName.Length < 3)
             return (false, "Tên đăng nhập phải có ít nhất 3 ký tự.", null);
@@ -67,9 +67,10 @@ public class AuthService : IAuthService
 
     public async Task<(bool Success, string? Error, LoginResponse? Data)> LoginAsync(LoginRequest request)
     {
+        var userName = request.UserName?.Trim() ?? string.Empty;
         var user = await _db.Users
             .Include(u => u.Role)
-            .FirstOrDefaultAsync(u => u.UserName == request.UserName.Trim());
+            .FirstOrDefaultAsync(u => u.UserName == userName);
 
         if (user == null)
             return (false, "Tên đăng nhập hoặc mật khẩu không đúng.", null);

@@ -1,5 +1,7 @@
 namespace GameVault.Api.Contracts;
 
+using System.ComponentModel.DataAnnotations;
+
 public class GameDto
 {
     public int Id { get; set; }
@@ -32,8 +34,10 @@ public class GameDto
 
 public class GameCreateRequest
 {
+    [Required(AllowEmptyStrings = false, ErrorMessage = "Tên game là bắt buộc.")]
     public string Title { get; set; } = string.Empty;
     public string Description { get; set; } = string.Empty;
+    [Range(0, double.MaxValue, ErrorMessage = "Giá không được âm.")]
     public decimal Price { get; set; }
     public decimal? DiscountPrice { get; set; }
     public DateTime? ReleaseDate { get; set; }

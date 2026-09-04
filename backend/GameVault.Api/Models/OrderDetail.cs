@@ -9,6 +9,7 @@ public class OrderDetail
     public Game Game { get; set; } = null!;
 
     public string GameTitle { get; set; } = string.Empty;
+    public string Slug { get; set; } = string.Empty;
     public string CoverImage { get; set; } = string.Empty;
     public int Quantity { get; set; }
     public decimal UnitPrice { get; set; }

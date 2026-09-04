@@ -46,7 +46,7 @@ public class ReviewService : IReviewService
             GameId = gameId,
             UserId = userId,
             Rating = request.Rating,
-            Comment = request.Comment.Trim(),
+            Comment = request.Comment?.Trim() ?? string.Empty,
             CreatedAt = DateTime.UtcNow
         };
 
@@ -69,7 +69,7 @@ public class ReviewService : IReviewService
         if (review.UserId != userId) return (false, "Bạn không có quyền sửa đánh giá này.", null);
 
         review.Rating = request.Rating;
-        review.Comment = request.Comment.Trim();
+        review.Comment = request.Comment?.Trim() ?? string.Empty;
         review.UpdatedAt = DateTime.UtcNow;
 
         await _db.SaveChangesAsync();

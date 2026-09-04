@@ -80,8 +80,13 @@ async function request<T>(path: string, opts: RequestOptions = {}): Promise<T> {
   const payload = (await res.json().catch(() => null)) as ApiResponse<T> | null;
 
   if (!res.ok || !payload?.success) {
-    const message = payload?.message ?? "Có lỗi xảy ra, vui lòng thử lại";
-    const errors = payload?.errors ?? [];
+    const errors = Array.isArray(payload?.errors)
+      ? payload.errors.filter((e): e is string => typeof e === "string")
+      : [];
+    const message =
+      errors.length > 0
+        ? errors.join(" · ")
+        : (payload?.message ?? "Có lỗi xảy ra, vui lòng thử lại");
     throw new ApiError(message, res.status, errors);
   }
 
