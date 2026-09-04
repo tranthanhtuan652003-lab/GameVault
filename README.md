@@ -100,3 +100,29 @@ GameVault/
 │  ├─ src/components/       # UI components
 │  └─ src/lib/              # api.ts, auth.tsx, cart.tsx, types.ts, format.ts
 ```
+
+---
+
+## Tests
+
+### Backend (xUnit)
+
+```bash
+cd backend/GameVault.Api.Tests
+dotnet test
+```
+
+Coverage: Auth, Cart and Order services (price-locking, quantity caps, authorisation
+scoping) plus DataAnnotations validation. Uses an in-memory SQLite database, so no
+SQL Server instance is required.
+
+### Frontend (Vitest)
+
+```bash
+cd frontend
+npm test           # run once
+npm run test:watch # watch mode
+```
+
+Coverage: `cn` util, `format` helpers, and the API request layer (query building,
+auth headers, error parsing).

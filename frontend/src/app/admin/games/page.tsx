@@ -1,6 +1,7 @@
 "use client";
 
 import { useEffect, useState } from "react";
+import Image from "next/image";
 import { useAuth } from "@/lib/auth";
 import { useToast } from "@/components/ui/toast";
 import { api } from "@/lib/api";
@@ -112,11 +113,15 @@ export default function AdminGamesPage() {
                 <tr key={g.id} className="border-b border-edge/50 last:border-0">
                   <td className="p-4">
                     <div className="flex items-center gap-3">
-                      <img
-                        src={g.coverImage}
-                        alt={g.title}
-                        className="h-12 w-9 rounded-lg object-cover"
-                      />
+                      <div className="relative h-12 w-9 shrink-0 overflow-hidden rounded-lg bg-surface-2">
+                        <Image
+                          src={g.coverImage}
+                          alt={g.title}
+                          fill
+                          sizes="36px"
+                          className="object-cover"
+                        />
+                      </div>
                       <div>
                         <p className="font-medium text-ink">{g.title}</p>
                         <p className="text-xs text-ink-soft">ID: {g.id}</p>
@@ -281,14 +286,15 @@ function GameForm({
       setPlatforms(p);
       setDevelopers(d);
       setPublishers(pb);
-      if (isEdit && existing) {
-        setGenreIds(g.filter((x) => existing.genres.includes(x.name)).map((x) => x.id));
-        setPlatformIds(p.filter((x) => existing.platforms.includes(x.name)).map((x) => x.id));
-        setDeveloperIds(d.filter((x) => existing.developers.includes(x.name)).map((x) => x.id));
-        setPublisherIds(pb.filter((x) => existing.publishers.includes(x.name)).map((x) => x.id));
+      const cur = isEdit ? existing : null;
+      if (cur) {
+        setGenreIds(g.filter((x) => cur.genres.includes(x.name)).map((x) => x.id));
+        setPlatformIds(p.filter((x) => cur.platforms.includes(x.name)).map((x) => x.id));
+        setDeveloperIds(d.filter((x) => cur.developers.includes(x.name)).map((x) => x.id));
+        setPublisherIds(pb.filter((x) => cur.publishers.includes(x.name)).map((x) => x.id));
       }
     });
-  }, [token]);
+  }, [token, existing, isEdit]);
 
   const toggle = (arr: number[], setArr: (v: number[]) => void, id: number) =>
     setArr(arr.includes(id) ? arr.filter((x) => x !== id) : [...arr, id]);
@@ -387,11 +393,15 @@ function GameForm({
                   className="flex items-center gap-3 rounded-lg border border-edge bg-surface-2 p-3"
                 >
                   {!!r.backgroundImage && (
-                    <img
-                      src={r.backgroundImage as string}
-                      alt=""
-                      className="h-10 w-16 rounded object-cover"
-                    />
+                    <div className="relative h-10 w-16 shrink-0 overflow-hidden rounded object-cover">
+                      <Image
+                        src={r.backgroundImage as string}
+                        alt=""
+                        fill
+                        sizes="64px"
+                        className="object-cover"
+                      />
+                    </div>
                   )}
                   <div className="flex-1">
                     <p className="text-sm font-semibold text-ink">{r.name as string}</p>

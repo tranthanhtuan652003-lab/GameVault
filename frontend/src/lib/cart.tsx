@@ -29,7 +29,7 @@ const CartContext = createContext<CartContextValue | null>(null);
 export function CartProvider({ children }: { children: ReactNode }) {
   const { token, isAuthenticated } = useAuth();
   const [cart, setCart] = useState<CartDto | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
 
   const refreshCart = useCallback(async () => {
     if (!token || !isAuthenticated) {
@@ -48,8 +48,23 @@ export function CartProvider({ children }: { children: ReactNode }) {
   }, [token, isAuthenticated]);
 
   useEffect(() => {
-    refreshCart();
-  }, [refreshCart]);
+    if (!token || !isAuthenticated) return;
+    let active = true;
+    api.cart
+      .get(token)
+      .then((c) => {
+        if (active) setCart(c);
+      })
+      .catch(() => {
+        if (active) setCart(null);
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [token, isAuthenticated]);
 
   const count = useMemo(
     () => cart?.items.reduce((acc, item) => acc + item.quantity, 0) ?? 0,

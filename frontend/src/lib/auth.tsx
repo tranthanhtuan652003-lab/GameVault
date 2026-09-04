@@ -4,9 +4,8 @@ import {
   createContext,
   useCallback,
   useContext,
-  useEffect,
   useMemo,
-  useState,
+  useSyncExternalStore,
   type ReactNode,
 } from "react";
 import type { LoginResponse, UserDto } from "./types";
@@ -14,6 +13,34 @@ import { api } from "./api";
 
 const TOKEN_KEY = "gamevault_token";
 const USER_KEY = "gamevault_user";
+
+const storageListeners = new Set<() => void>();
+
+function subscribe(callback: () => void) {
+  const handle = (e: StorageEvent) => {
+    if (e.key === null || e.key === TOKEN_KEY || e.key === USER_KEY) {
+      storageListeners.forEach((l) => l());
+    }
+  };
+  window.addEventListener("storage", handle);
+  storageListeners.add(callback);
+  return () => {
+    window.removeEventListener("storage", handle);
+    storageListeners.delete(callback);
+  };
+}
+
+function readToken(): string {
+  return localStorage.getItem(TOKEN_KEY) ?? "";
+}
+function readUser(): UserDto | null {
+  try {
+    const raw = localStorage.getItem(USER_KEY);
+    return raw ? (JSON.parse(raw) as UserDto) : null;
+  } catch {
+    return null;
+  }
+}
 
 interface AuthContextValue {
   token: string | null;
@@ -35,48 +62,29 @@ interface AuthContextValue {
 const AuthContext = createContext<AuthContextValue | null>(null);
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [token, setToken] = useState<string | null>(null);
-  const [user, setUserState] = useState<UserDto | null>(null);
-  const [hydrated, setHydrated] = useState(false);
-
-  useEffect(() => {
-    const t = localStorage.getItem(TOKEN_KEY);
-    if (t) setToken(t);
-    const storedUser = localStorage.getItem(USER_KEY);
-    if (storedUser) {
-      try {
-        setUserState(JSON.parse(storedUser));
-      } catch {
-        localStorage.removeItem(USER_KEY);
-      }
-    }
-    setHydrated(true);
-  }, []);
+  const token = useSyncExternalStore(subscribe, readToken, () => "") || null;
+  const user = useSyncExternalStore(subscribe, readUser, () => null) || null;
 
   const setUser = useCallback((u: UserDto) => {
-    setUserState(u);
     localStorage.setItem(USER_KEY, JSON.stringify(u));
+    storageListeners.forEach((l) => l());
   }, []);
 
-  const persistSession = useCallback(
-    (res: LoginResponse) => {
-      const t = res.token;
-      localStorage.setItem(TOKEN_KEY, t);
-      setToken(t);
-      const u: UserDto = {
-        id: res.id,
-        userName: res.userName,
-        email: res.email,
-        fullName: res.fullName,
-        role: res.role,
-        isActive: true,
-        createdAt: new Date().toISOString(),
-      };
-      setUser(u);
-      return u;
-    },
-    [setUser]
-  );
+  const persistSession = useCallback((res: LoginResponse) => {
+    localStorage.setItem(TOKEN_KEY, res.token);
+    const u: UserDto = {
+      id: res.id,
+      userName: res.userName,
+      email: res.email,
+      fullName: res.fullName,
+      role: res.role,
+      isActive: true,
+      createdAt: new Date().toISOString(),
+    };
+    localStorage.setItem(USER_KEY, JSON.stringify(u));
+    storageListeners.forEach((l) => l());
+    return u;
+  }, []);
 
   const login = useCallback(
     async (userName: string, password: string) => {
@@ -102,8 +110,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const logout = useCallback(() => {
     localStorage.removeItem(TOKEN_KEY);
     localStorage.removeItem(USER_KEY);
-    setToken(null);
-    setUserState(null);
+    storageListeners.forEach((l) => l());
   }, []);
 
   const refreshUser = useCallback(async () => {
@@ -131,10 +138,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     }),
     [token, user, login, register, logout, refreshUser, setUser]
   );
-
-  if (!hydrated) {
-    return <div className="min-h-screen bg-canvas" />;
-  }
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
 }

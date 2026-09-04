@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useCallback, useEffect, useState } from "react";
 import { useAuth } from "@/lib/auth";
 import { useToast } from "@/components/ui/toast";
 import { api } from "@/lib/api";
@@ -20,8 +20,9 @@ export default function AdminReviewsPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
 
-  const load = (p: number) => {
+  const load = useCallback((p: number) => {
     if (!token) return;
+    setLoading(true);
     api.admin.reviews
       .list(p, PAGE_SIZE, token)
       .then((r) => {
@@ -32,9 +33,30 @@ export default function AdminReviewsPage() {
       })
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
-  };
+  }, [token]);
 
-  useEffect(() => { load(1); }, [token]);
+  useEffect(() => {
+    if (!token) return;
+    let active = true;
+    api.admin.reviews
+      .list(1, PAGE_SIZE, token)
+      .then((r) => {
+        if (!active) return;
+        setReviews(r.items);
+        setTotalPages(r.totalPages);
+        setTotal(r.totalCount);
+        setPage(r.page);
+      })
+      .catch((e) => {
+        if (active) setError(e.message);
+      })
+      .finally(() => {
+        if (active) setLoading(false);
+      });
+    return () => {
+      active = false;
+    };
+  }, [token]);
 
   const handleDelete = async (r: ReviewDto) => {
     if (!token) return;
