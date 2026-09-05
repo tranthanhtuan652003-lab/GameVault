@@ -3,6 +3,7 @@ using GameVault.Api.Contracts;
 using GameVault.Api.Helpers;
 using GameVault.Api.Services;
 using Microsoft.AspNetCore.Authorization;
+using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
 
 namespace GameVault.Api.Controllers;
@@ -64,5 +65,17 @@ public class AuthController : ControllerBase
         if (!result.Success)
             return BadRequest(Res.Fail(result.Error!));
         return Ok(Res.Ok("Cập nhật hồ sơ thành công"));
+    }
+
+    [Authorize]
+    [HttpPost("avatar")]
+    [RequestSizeLimit(6 * 1024 * 1024)]
+    public async Task<IActionResult> UpdateAvatar(IFormFile file)
+    {
+        var userName = User.FindFirstValue(ClaimTypes.Name)!;
+        var result = await _auth.UpdateAvatarAsync(userName, file);
+        if (!result.Success)
+            return BadRequest(Res.Fail(result.Error!));
+        return Ok(Res.Ok("Cập nhật ảnh đại diện thành công", result.AvatarUrl));
     }
 }

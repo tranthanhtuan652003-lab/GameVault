@@ -7,7 +7,8 @@ import { GameRow } from "@/components/home/game-row";
 import { GenreGrid } from "@/components/home/genre-grid";
 import { CTASection } from "@/components/home/cta";
 
-export const revalidate = 60;
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 export default async function HomePage() {
   const [featured, rated, genres] = await Promise.all([

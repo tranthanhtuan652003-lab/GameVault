@@ -3,7 +3,8 @@ import { GamesExplorer } from "@/components/games/games-explorer";
 import { gamesQueryFromParams } from "@/lib/games-params";
 import { GameCardSkeleton } from "@/components/game/game-card-skeleton";
 
-export const revalidate = 60;
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 export default async function GamesPage({
   searchParams,

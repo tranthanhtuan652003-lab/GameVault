@@ -1,6 +1,7 @@
 "use client";
 
 import Link from "next/link";
+import Image from "next/image";
 import { usePathname, useRouter } from "next/navigation";
 import {
   GameController,
@@ -11,6 +12,7 @@ import {
 } from "@phosphor-icons/react";
 import { useAuth } from "@/lib/auth";
 import { useCart } from "@/lib/cart";
+import { resolveAssetUrl } from "@/lib/api";
 import { cn } from "@/lib/cn";
 import { useState } from "react";
 
@@ -125,8 +127,19 @@ export function Navbar() {
                 className="flex h-10 w-10 items-center justify-center rounded-full border border-edge bg-surface text-ink-soft transition hover:text-ink"
                 aria-label="Tài khoản"
               >
-                <span className="text-sm font-bold text-ink">
-                  {user?.fullName?.charAt(0).toUpperCase() ?? "U"}
+                <span className="flex h-full w-full items-center justify-center overflow-hidden rounded-full text-sm font-bold text-ink">
+                  {user?.avatarUrl ? (
+                    <Image
+                      src={resolveAssetUrl(user.avatarUrl)}
+                      alt=""
+                      width={40}
+                      height={40}
+                      unoptimized
+                      className="h-full w-full object-cover"
+                    />
+                  ) : (
+                    (user?.fullName?.charAt(0).toUpperCase() ?? "U")
+                  )}
                 </span>
               </button>
               {menuOpen && (

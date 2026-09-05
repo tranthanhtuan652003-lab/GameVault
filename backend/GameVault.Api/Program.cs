@@ -123,6 +123,9 @@ using (var scope = app.Services.CreateScope())
 
 app.UseMiddleware<ExceptionHandlingMiddleware>();
 
+// Phục vụ file tĩnh (ảnh avatar upload) từ wwwroot/uploads
+app.UseStaticFiles();
+
 // Swagger chỉ bật ở môi trường Development
 if (app.Environment.IsDevelopment())
 {

@@ -17,7 +17,8 @@ public class AuthServiceTests
                 ["Jwt:Audience"] = "test",
                 ["Jwt:ExpiryMinutes"] = "120"
             })
-            .Build());
+            .Build(),
+        new TestEnv());
 
     [Fact]
     public async Task Register_CreatesUserWithCartAndWishlist()

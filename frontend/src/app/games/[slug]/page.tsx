@@ -3,7 +3,8 @@ import type { Metadata } from "next";
 import { api } from "@/lib/api";
 import { GameDetailClient } from "@/components/game/game-detail-client";
 
-export const revalidate = 60;
+export const dynamic = "force-dynamic";
+export const revalidate = 0;
 
 export async function generateMetadata({
   params,

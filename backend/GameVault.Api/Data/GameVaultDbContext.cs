@@ -63,6 +63,7 @@ public class GameVaultDbContext : DbContext
             e.Property(u => u.Email).HasMaxLength(150).IsRequired();
             e.Property(u => u.PasswordHash).HasMaxLength(255).IsRequired();
             e.Property(u => u.FullName).HasMaxLength(150).IsRequired();
+            e.Property(u => u.AvatarUrl).HasMaxLength(500);
             e.HasIndex(u => u.UserName).IsUnique();
             e.HasIndex(u => u.Email).IsUnique();
 

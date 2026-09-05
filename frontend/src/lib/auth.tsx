@@ -33,13 +33,27 @@ function subscribe(callback: () => void) {
 function readToken(): string {
   return localStorage.getItem(TOKEN_KEY) ?? "";
 }
+
+// useSyncExternalStore requires getSnapshot to return a cached reference whenever
+// the underlying data is unchanged. JSON.parse creates a fresh object on every
+// call, which would make React think the snapshot changed each render and trigger
+// an infinite update loop. Cache the parsed result keyed by the raw stored string.
+let cachedUserRaw: string | null = null;
+let cachedUser: UserDto | null = null;
 function readUser(): UserDto | null {
-  try {
-    const raw = localStorage.getItem(USER_KEY);
-    return raw ? (JSON.parse(raw) as UserDto) : null;
-  } catch {
+  const raw = localStorage.getItem(USER_KEY);
+  if (raw === cachedUserRaw) return cachedUser;
+  cachedUserRaw = raw;
+  if (!raw) {
+    cachedUser = null;
     return null;
   }
+  try {
+    cachedUser = JSON.parse(raw) as UserDto;
+  } catch {
+    cachedUser = null;
+  }
+  return cachedUser;
 }
 
 interface AuthContextValue {
@@ -77,6 +91,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       userName: res.userName,
       email: res.email,
       fullName: res.fullName,
+      avatarUrl: res.avatarUrl,
       role: res.role,
       isActive: true,
       createdAt: new Date().toISOString(),
@@ -118,8 +133,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     try {
       const u = await api.auth.me(token);
       setUser(u);
-    } catch {
-      // token invalid/expired
+    } catch (err) {
+      // Nếu gặp lỗi mất kết nối máy chủ backend (status 0), không đăng xuất user
+      if (err && typeof err === "object" && "status" in err && err.status === 0) {
+        return;
+      }
+      // token invalid/expired (status 401)
       logout();
     }
   }, [token, setUser, logout]);

@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect, useState } from "react";
+import { useEffect, useRef, useState } from "react";
 import Link from "next/link";
 import Image from "next/image";
 import {
@@ -11,10 +11,11 @@ import {
   CheckCircle,
   Clock,
   XCircle,
+  Camera,
 } from "@phosphor-icons/react";
 import { useAuth } from "@/lib/auth";
 import { useToast } from "@/components/ui/toast";
-import { api } from "@/lib/api";
+import { api, resolveAssetUrl } from "@/lib/api";
 import { ApiError } from "@/lib/api";
 import { Button } from "@/components/ui/button";
 import { cn } from "@/lib/cn";
@@ -63,6 +64,35 @@ export default function AccountPage() {
   const [newPw, setNewPw] = useState("");
   const [saving, setSaving] = useState(false);
   const [savingPw, setSavingPw] = useState(false);
+  const [uploadingAvatar, setUploadingAvatar] = useState(false);
+  const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
+  const avatarInputRef = useRef<HTMLInputElement>(null);
+
+  const pickAvatar = (e: React.ChangeEvent<HTMLInputElement>) => {
+    const file = e.target.files?.[0];
+    if (!file) return;
+    const reader = new FileReader();
+    reader.onload = () => setAvatarPreview(reader.result as string);
+    reader.readAsDataURL(file);
+  };
+
+  const uploadAvatar = async () => {
+    const file = avatarInputRef.current?.files?.[0];
+    if (!token || !file) return;
+    setUploadingAvatar(true);
+    try {
+      await api.auth.uploadAvatar(file, token);
+      setAvatarPreview(null);
+      if (avatarInputRef.current) avatarInputRef.current.value = "";
+      await refreshUser();
+      toast("Đã cập nhật ảnh đại diện");
+    } catch (err) {
+      const msg = err instanceof ApiError ? err.message : "Có lỗi xảy ra";
+      toast(msg, "error");
+    } finally {
+      setUploadingAvatar(false);
+    }
+  };
 
   useEffect(() => {
     if (!token || !isAuthenticated) return;
@@ -142,8 +172,19 @@ export default function AccountPage() {
       <div className="grid gap-8 lg:grid-cols-[240px_1fr]">
         <aside>
           <div className="mb-4 flex items-center gap-3 rounded-2xl border border-edge bg-surface p-4">
-            <span className="flex h-11 w-11 items-center justify-center rounded-full bg-accent/15 text-lg font-bold text-accent">
-              {user?.fullName?.charAt(0).toUpperCase() ?? "U"}
+            <span className="flex h-11 w-11 shrink-0 items-center justify-center overflow-hidden rounded-full bg-accent/15 text-lg font-bold text-accent">
+              {user?.avatarUrl ? (
+                <Image
+                  src={resolveAssetUrl(user.avatarUrl)}
+                  alt=""
+                  width={44}
+                  height={44}
+                  unoptimized
+                  className="h-full w-full object-cover"
+                />
+              ) : (
+                (user?.fullName?.charAt(0).toUpperCase() ?? "U")
+              )}
             </span>
             <div className="min-w-0">
               <p className="truncate font-semibold text-ink">{user?.fullName}</p>
@@ -207,6 +248,15 @@ export default function AccountPage() {
               saveProfile={saveProfile}
               changePassword={changePassword}
               user={user}
+              avatarInputRef={avatarInputRef}
+              avatarPreview={avatarPreview}
+              uploadingAvatar={uploadingAvatar}
+              onPickAvatar={pickAvatar}
+              onUploadAvatar={uploadAvatar}
+              onCancelAvatar={() => {
+                setAvatarPreview(null);
+                if (avatarInputRef.current) avatarInputRef.current.value = "";
+              }}
             />
           )}
         </div>
@@ -342,6 +392,12 @@ function ProfileTab({
   saveProfile,
   changePassword,
   user,
+  avatarInputRef,
+  avatarPreview,
+  uploadingAvatar,
+  onPickAvatar,
+  onUploadAvatar,
+  onCancelAvatar,
 }: {
   editName: string;
   setEditName: (v: string) => void;
@@ -356,6 +412,12 @@ function ProfileTab({
   saveProfile: (e: React.FormEvent) => void;
   changePassword: (e: React.FormEvent) => void;
   user: NonNullable<ReturnType<typeof useAuth>["user"]> | null;
+  avatarInputRef: React.RefObject<HTMLInputElement | null>;
+  avatarPreview: string | null;
+  uploadingAvatar: boolean;
+  onPickAvatar: (e: React.ChangeEvent<HTMLInputElement>) => void;
+  onUploadAvatar: () => void;
+  onCancelAvatar: () => void;
 }) {
   return (
     <div className="grid gap-8 lg:grid-cols-2">
@@ -364,6 +426,70 @@ function ProfileTab({
           <PencilSimple size={18} className="text-accent" /> Thông tin cá nhân
         </h2>
         <div className="space-y-4">
+          <div className="flex items-center gap-4">
+            <div className="relative flex h-20 w-20 items-center justify-center overflow-hidden rounded-full bg-accent/15 text-2xl font-bold text-accent">
+              {avatarPreview ? (
+                <Image
+                  src={avatarPreview}
+                  alt=""
+                  width={80}
+                  height={80}
+                  unoptimized
+                  className="h-full w-full object-cover"
+                />
+              ) : user?.avatarUrl ? (
+                <Image
+                  src={resolveAssetUrl(user.avatarUrl)}
+                  alt=""
+                  width={80}
+                  height={80}
+                  unoptimized
+                  className="h-full w-full object-cover"
+                />
+              ) : (
+                (user?.fullName?.charAt(0).toUpperCase() ?? "U")
+              )}
+            </div>
+            <div className="space-y-2">
+              <input
+                ref={avatarInputRef}
+                type="file"
+                accept="image/*"
+                onChange={onPickAvatar}
+                className="hidden"
+              />
+              <Button
+                type="button"
+                variant="outline"
+                size="sm"
+                onClick={() => avatarInputRef.current?.click()}
+              >
+                <Camera size={16} className="mr-1.5" /> Chọn ảnh
+              </Button>
+              {avatarPreview && (
+                <div className="flex gap-2">
+                  <Button
+                    type="button"
+                    size="sm"
+                    loading={uploadingAvatar}
+                    disabled={uploadingAvatar}
+                    onClick={onUploadAvatar}
+                  >
+                    Lưu ảnh
+                  </Button>
+                  <Button
+                    type="button"
+                    variant="ghost"
+                    size="sm"
+                    disabled={uploadingAvatar}
+                    onClick={onCancelAvatar}
+                  >
+                    Hủy
+                  </Button>
+                </div>
+              )}
+            </div>
+          </div>
           <Field label="Tên đăng nhập">
             <input value={user?.userName ?? ""} disabled className={inputClass} />
           </Field>

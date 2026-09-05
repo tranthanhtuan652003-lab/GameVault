@@ -67,12 +67,15 @@ async function request<T>(path: string, opts: RequestOptions = {}): Promise<T> {
       headers,
       body: body !== undefined ? JSON.stringify(body) : undefined,
       signal,
-      // Only bypass caching for authenticated requests (user-specific data must
-      // always be fresh) and mutations. Public GETs stay cacheable so Next.js
-      // ISR / revalidate can work as configured on server-side pages.
-      ...(token || method !== "GET" ? { cache: "no-store" as const } : {}),
+      cache: "no-store",
     });
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent("gamevault:backend-online"));
+    }
   } catch (err) {
+    if (typeof window !== "undefined") {
+      window.dispatchEvent(new CustomEvent("gamevault:backend-offline"));
+    }
     const reason = err instanceof Error ? err.message : "Network error";
     throw new ApiError(`Không thể kết nối máy chủ: ${reason}`, 0);
   }
@@ -162,6 +165,34 @@ export const api = {
         body: { fullName, email },
         token,
       }),
+    uploadAvatar: async (file: File, token: string): Promise<string> => {
+      const form = new FormData();
+      form.append("file", file);
+      let res: Response;
+      try {
+        res = await fetch(`${API_URL}/api/Auth/avatar`, {
+          method: "POST",
+          headers: { Authorization: `Bearer ${token}` },
+          body: form,
+          cache: "no-store",
+        });
+      } catch (err) {
+        const reason = err instanceof Error ? err.message : "Network error";
+        throw new ApiError(`Không thể kết nối máy chủ: ${reason}`, 0);
+      }
+      const payload = (await res.json().catch(() => null)) as ApiResponse<string> | null;
+      if (!res.ok || !payload?.success) {
+        const errors = Array.isArray(payload?.errors)
+          ? payload.errors.filter((e): e is string => typeof e === "string")
+          : [];
+        const message =
+          errors.length > 0
+            ? errors.join(" · ")
+            : (payload?.message ?? "Có lỗi xảy ra, vui lòng thử lại");
+        throw new ApiError(message, res.status, errors);
+      }
+      return payload.data as string;
+    },
   },
 
   // Authenticated
@@ -295,3 +326,10 @@ export const api = {
       request<null>(`/api/Admin/publishers/${id}`, { method: "DELETE", token }),
   },
 };
+
+export function resolveAssetUrl(path?: string | null): string {
+  if (!path) return "";
+  if (/^https?:\/\//i.test(path)) return path;
+  if (path.startsWith("/")) return `${API_URL}${path}`;
+  return `${API_URL}/${path}`;
+}

@@ -1,4 +1,4 @@
-# OS
+﻿# OS
 Desktop.ini
 Thumbs.db
 .DS_Store
@@ -9,3 +9,6 @@ Thumbs.db
 
 # Logs
 *.log
+
+# Runtime / uploads
+**/wwwroot/uploads/

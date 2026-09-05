@@ -17,6 +17,7 @@ export interface LoginResponse {
   userName: string;
   email: string;
   fullName: string;
+  avatarUrl: string | null;
   role: string;
   expiresAt: string;
 }
@@ -26,6 +27,7 @@ export interface UserDto {
   userName: string;
   email: string;
   fullName: string;
+  avatarUrl: string | null;
   role: string;
   isActive: boolean;
   createdAt: string;

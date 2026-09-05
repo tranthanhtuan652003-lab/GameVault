@@ -67,17 +67,17 @@ export function CartProvider({ children }: { children: ReactNode }) {
   }, [token, isAuthenticated]);
 
   const count = useMemo(
-    () => cart?.items.reduce((acc, item) => acc + item.quantity, 0) ?? 0,
+    () => cart?.items?.reduce((acc, item) => acc + item.quantity, 0) ?? 0,
     [cart]
   );
 
   const addToCart = useCallback(
     async (gameId: number, quantity = 1) => {
       if (!token) throw new Error("not_authenticated");
-      const c = await api.cart.add(gameId, quantity, token);
-      setCart(c);
+      await api.cart.add(gameId, quantity, token);
+      await refreshCart();
     },
-    [token]
+    [token, refreshCart]
   );
 
   const updateQuantity = useCallback(

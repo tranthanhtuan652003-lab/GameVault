@@ -4,6 +4,7 @@ using System.Text;
 using GameVault.Api.Contracts;
 using GameVault.Api.Data;
 using GameVault.Api.Models;
+using Microsoft.AspNetCore.Http;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.IdentityModel.Tokens;
 
@@ -13,11 +14,13 @@ public class AuthService : IAuthService
 {
     private readonly GameVaultDbContext _db;
     private readonly IConfiguration _config;
+    private readonly IWebHostEnvironment _env;
 
-    public AuthService(GameVaultDbContext db, IConfiguration config)
+    public AuthService(GameVaultDbContext db, IConfiguration config, IWebHostEnvironment env)
     {
         _db = db;
         _config = config;
+        _env = env;
     }
 
     public async Task<(bool Success, string? Error, LoginResponse? Data)> RegisterAsync(RegisterRequest request)
@@ -133,6 +136,50 @@ public class AuthService : IAuthService
         return (true, null);
     }
 
+    private static readonly string[] AllowedAvatarExtensions = { ".jpg", ".jpeg", ".png", ".webp", ".gif", ".bmp" };
+
+    public async Task<(bool Success, string? Error, string? AvatarUrl)> UpdateAvatarAsync(string userName, IFormFile file)
+    {
+        var user = await _db.Users.FirstOrDefaultAsync(u => u.UserName == userName);
+        if (user == null) return (false, "Không tìm thấy người dùng.", null);
+
+        if (file == null || file.Length == 0)
+            return (false, "Vui lòng chọn file ảnh.", null);
+        if (file.Length > 5 * 1024 * 1024)
+            return (false, "File ảnh không được vượt quá 5MB.", null);
+
+        var ext = Path.GetExtension(file.FileName).ToLowerInvariant();
+        if (!AllowedAvatarExtensions.Contains(ext))
+            return (false, "Định dạng ảnh không hợp lệ (chỉ hỗ trợ jpg, jpeg, png, webp, gif, bmp).", null);
+
+        var safeName = $"{userName}-{Guid.NewGuid():N}{ext}";
+        var uploadDir = Path.Combine(_env.WebRootPath ?? Path.Combine(_env.ContentRootPath, "wwwroot"), "uploads", "avatars");
+        Directory.CreateDirectory(uploadDir);
+
+        var filePath = Path.Combine(uploadDir, safeName);
+        using (var stream = System.IO.File.Create(filePath))
+        {
+            await file.CopyToAsync(stream);
+        }
+
+        // Xóa ảnh cũ nếu nó nằm trong thư mục uploads/avatars
+        if (!string.IsNullOrWhiteSpace(user.AvatarUrl))
+        {
+            var oldPath = Path.Combine(_env.WebRootPath ?? Path.Combine(_env.ContentRootPath, "wwwroot"), user.AvatarUrl.TrimStart('/').Replace('/', Path.DirectorySeparatorChar));
+            if (System.IO.Path.GetFullPath(oldPath).StartsWith(System.IO.Path.GetFullPath(uploadDir), StringComparison.OrdinalIgnoreCase)
+                && System.IO.File.Exists(oldPath))
+            {
+                System.IO.File.Delete(oldPath);
+            }
+        }
+
+        var relativeUrl = $"/uploads/avatars/{safeName}";
+        user.AvatarUrl = relativeUrl;
+        await _db.SaveChangesAsync();
+
+        return (true, null, relativeUrl);
+    }
+
     private LoginResponse BuildResponse(User user, string token) => new()
     {
         Id = user.Id,
@@ -140,6 +187,7 @@ public class AuthService : IAuthService
         UserName = user.UserName,
         Email = user.Email,
         FullName = user.FullName,
+        AvatarUrl = user.AvatarUrl,
         Role = user.Role?.Name ?? "User",
         ExpiresAt = DateTime.UtcNow.AddMinutes(_config.GetValue<double>("Jwt:ExpiryMinutes", 120))
     };

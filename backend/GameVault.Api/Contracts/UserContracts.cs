@@ -8,6 +8,7 @@ public class UserDto
     public string UserName { get; set; } = string.Empty;
     public string Email { get; set; } = string.Empty;
     public string FullName { get; set; } = string.Empty;
+    public string? AvatarUrl { get; set; }
     public string Role { get; set; } = string.Empty;
     public bool IsActive { get; set; }
     public DateTime CreatedAt { get; set; }
@@ -32,6 +33,7 @@ public static class Mapping
         UserName = u.UserName,
         Email = u.Email,
         FullName = u.FullName,
+        AvatarUrl = u.AvatarUrl,
         Role = u.Role?.Name ?? string.Empty,
         IsActive = u.IsActive,
         CreatedAt = u.CreatedAt
