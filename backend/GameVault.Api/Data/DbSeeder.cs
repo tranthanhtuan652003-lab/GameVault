@@ -204,7 +204,7 @@ public static class DbSeeder
     }
 
     private static IReadOnlyList<string> SteamImageFiles() =>
-        new[] { "header.jpg", "library_600x900.jpg", "capsule_616x353.jpg", "library_hero.jpg", "hero_capsule.jpg" };
+        new[] { "header.jpg", "library_600x900.jpg", "capsule_616x353.jpg", "library_hero.jpg" };
 
     private static bool IsUsableTrailer(string url) =>
         !string.IsNullOrWhiteSpace(url) &&
