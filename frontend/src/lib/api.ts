@@ -90,6 +90,13 @@ async function request<T>(path: string, opts: RequestOptions = {}): Promise<T> {
       errors.length > 0
         ? errors.join(" · ")
         : (payload?.message ?? "Có lỗi xảy ra, vui lòng thử lại");
+
+    // Token hết hạn/hợp lệ: thông báo tập trung để AuthProvider đăng xuất,
+    // tránh trạng thái "nửa đăng nhập" khi mọi request sau đó đều 401 im lặng.
+    if (res.status === 401 && typeof window !== "undefined" && token) {
+      window.dispatchEvent(new CustomEvent("gamevault:unauthorized"));
+    }
+
     throw new ApiError(message, res.status, errors);
   }
 
@@ -282,12 +289,19 @@ export const api = {
       }),
 
     games: {
+      all: (params: { page?: number; pageSize?: number; search?: string }, token: string) =>
+        request<PagedResult<GameDto>>("/api/Games/admin/all", {
+          query: { page: params.page ?? 1, pageSize: params.pageSize ?? 100, search: params.search },
+          token,
+        }),
       create: (data: GameCreateRequest, token: string) =>
         request<GameDto>("/api/Games", { method: "POST", body: data, token }),
       update: (id: number, data: GameCreateRequest, token: string) =>
         request<GameDto>(`/api/Games/${id}`, { method: "PUT", body: data, token }),
       delete: (id: number, token: string) =>
         request<null>(`/api/Games/${id}`, { method: "DELETE", token }),
+      restore: (id: number, token: string) =>
+        request<null>(`/api/Games/${id}/restore`, { method: "POST", token }),
     },
 
     genres: {

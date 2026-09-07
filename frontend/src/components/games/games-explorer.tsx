@@ -57,6 +57,8 @@ export function GamesExplorer({ initialQuery }: { initialQuery: GameListParams }
       (filters.genre ?? "") !== (urlQuery.genre ?? "") ||
       (filters.platform ?? "") !== (urlQuery.platform ?? "") ||
       (filters.sort ?? "newest") !== (urlQuery.sort ?? "newest") ||
+      (filters.minPrice ?? null) !== (urlQuery.minPrice ?? null) ||
+      (filters.maxPrice ?? null) !== (urlQuery.maxPrice ?? null) ||
       (filters.page ?? 1) !== (urlQuery.page ?? 1);
     if (changed) {
       // eslint-disable-next-line react-hooks/set-state-in-effect
@@ -76,6 +78,8 @@ export function GamesExplorer({ initialQuery }: { initialQuery: GameListParams }
       if (next.genre) sp.set("genre", next.genre);
       if (next.platform) sp.set("platform", next.platform);
       if (next.sort && next.sort !== "newest") sp.set("sort", next.sort);
+      if (next.minPrice != null) sp.set("minPrice", String(next.minPrice));
+      if (next.maxPrice != null) sp.set("maxPrice", String(next.maxPrice));
       if (next.page && next.page > 1) sp.set("page", String(next.page));
       const qs = sp.toString();
       router.push(`/games${qs ? `?${qs}` : ""}`, { scroll: false });

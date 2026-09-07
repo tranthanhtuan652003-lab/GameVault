@@ -56,10 +56,11 @@ export function BackendStatusProvider({ children }: { children: ReactNode }) {
     window.addEventListener("gamevault:backend-offline", handleOffline);
     window.addEventListener("gamevault:backend-online", handleOnline);
 
-    // Initial silent ping check
-    checkHealth();
+    // Initial silent ping check (defer để không setState đồng bộ trong effect)
+    const pingTimer = setTimeout(() => void checkHealth(), 0);
 
     return () => {
+      clearTimeout(pingTimer);
       window.removeEventListener("gamevault:backend-offline", handleOffline);
       window.removeEventListener("gamevault:backend-online", handleOnline);
     };

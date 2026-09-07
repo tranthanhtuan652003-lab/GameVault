@@ -46,8 +46,9 @@ public class OrderServiceTests
         Assert.Equal(84.97m, order.Total);
         Assert.Equal(2, order.Items.Count);
 
-        // Subtotal is re-derived from the live game price at order time.
-        Assert.Equal(20022.99m, order.Subtotal);
+        // Subtotal is derived from the locked base price at add-time, so the
+        // live price mutation does not leak into the order.
+        Assert.Equal(144.99m, order.Subtotal);
 
         // GameSalesCount incremented
         var updated = db.Db.Games.Single(g => g.Id == 1);

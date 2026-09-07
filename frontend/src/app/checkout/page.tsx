@@ -34,6 +34,15 @@ export default function CheckoutPage() {
   const [submitting, setSubmitting] = useState(false);
   const [order, setOrder] = useState<OrderDto | null>(null);
 
+  // Đồng bộ form từ user profile khi auth hydrate xong mà không ghi đè khi
+  // user đang gõ. Điều chỉnh state trong lúc render theo tài liệu React.
+  const [prevFormUser, setPrevFormUser] = useState(user?.fullName ?? "");
+  if ((user?.fullName ?? "") !== prevFormUser) {
+    setPrevFormUser(user?.fullName ?? "");
+    setCustomerName(user?.fullName ?? "");
+    setEmail(user?.email ?? "");
+  }
+
   if (!isAuthenticated) {
     return (
       <div className="container-page flex flex-col items-center justify-center py-28 text-center">

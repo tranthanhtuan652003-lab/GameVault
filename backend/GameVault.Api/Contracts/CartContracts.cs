@@ -28,12 +28,12 @@ public class AddCartItemRequest
 {
     [Range(1, int.MaxValue, ErrorMessage = "GameId không hợp lệ.")]
     public int GameId { get; set; }
-    [Range(1, 99, ErrorMessage = "Số lượng phải từ 1 đến 99.")]
+    [Range(1, 10, ErrorMessage = "Số lượng phải từ 1 đến 10.")]
     public int Quantity { get; set; } = 1;
 }
 
 public class UpdateCartItemRequest
 {
-    [Range(1, 99, ErrorMessage = "Số lượng phải từ 1 đến 99.")]
+    [Range(1, 10, ErrorMessage = "Số lượng phải từ 1 đến 10.")]
     public int Quantity { get; set; }
 }

@@ -1,4 +1,5 @@
 using System.Text;
+using System.Threading.RateLimiting;
 using GameVault.Api.Data;
 using GameVault.Api.Helpers;
 using GameVault.Api.Middlewares;
@@ -69,6 +70,21 @@ builder.Services.AddAuthentication(JwtBearerDefaults.AuthenticationScheme)
 
 builder.Services.AddAuthorization();
 
+// Rate limiting chống brute-force cho các endpoint xác thực
+builder.Services.AddRateLimiter(options =>
+{
+    options.RejectionStatusCode = StatusCodes.Status429TooManyRequests;
+    options.AddPolicy("auth", context =>
+        RateLimitPartition.GetFixedWindowLimiter(
+            context.Connection.RemoteIpAddress?.ToString() ?? "unknown",
+            _ => new FixedWindowRateLimiterOptions
+            {
+                PermitLimit = 10,
+                Window = TimeSpan.FromMinutes(1),
+                QueueLimit = 0
+            }));
+});
+
 // CORS
 var origins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? new[] { "http://localhost:3000" };
 builder.Services.AddCors(options =>
@@ -122,9 +138,16 @@ using (var scope = app.Services.CreateScope())
 }
 
 app.UseMiddleware<ExceptionHandlingMiddleware>();
+app.UseRateLimiter();
 
 // Phục vụ file tĩnh (ảnh avatar upload) từ wwwroot/uploads
 app.UseStaticFiles();
+
+// HTTPS redirect chỉ bật ngoài Development (tránh phá luồng chạy local http)
+if (!app.Environment.IsDevelopment())
+{
+    app.UseHttpsRedirection();
+}
 
 // Swagger chỉ bật ở môi trường Development
 if (app.Environment.IsDevelopment())

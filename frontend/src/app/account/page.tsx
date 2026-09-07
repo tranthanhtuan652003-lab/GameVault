@@ -68,6 +68,16 @@ export default function AccountPage() {
   const [avatarPreview, setAvatarPreview] = useState<string | null>(null);
   const avatarInputRef = useRef<HTMLInputElement>(null);
 
+  // Đồng bộ form từ user profile khi auth hydrate xong (hoặc sau khi cập nhật
+  // profile/avatar) mà không ghi đè khi user đang gõ. Điều chỉnh state trong
+  // lúc render theo tài liệu React (tránh setState đồng bộ trong effect).
+  const [prevFormUser, setPrevFormUser] = useState(user?.fullName ?? "");
+  if ((user?.fullName ?? "") !== prevFormUser) {
+    setPrevFormUser(user?.fullName ?? "");
+    setEditName(user?.fullName ?? "");
+    setEditEmail(user?.email ?? "");
+  }
+
   const pickAvatar = (e: React.ChangeEvent<HTMLInputElement>) => {
     const file = e.target.files?.[0];
     if (!file) return;
@@ -149,9 +159,13 @@ export default function AccountPage() {
 
   const removeWishlist = async (gameId: number) => {
     if (!token) return;
-    await api.wishlist.remove(gameId, token).catch(() => {});
-    setWishlist((w) => w.filter((i) => i.gameId !== gameId));
-    toast("Đã xóa khỏi yêu thích");
+    try {
+      await api.wishlist.remove(gameId, token);
+      setWishlist((w) => w.filter((i) => i.gameId !== gameId));
+      toast("Đã xóa khỏi yêu thích");
+    } catch (err) {
+      toast(err instanceof ApiError ? err.message : "Có lỗi xảy ra", "error");
+    }
   };
 
   const tabs: { id: Tab; label: string; icon: React.ReactNode }[] = [

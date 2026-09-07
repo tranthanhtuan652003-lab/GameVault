@@ -66,7 +66,14 @@ public class ValidationTests
     public void AddCartItemRequest_RejectsZeroQuantity()
     {
         var result = Validate(new AddCartItemRequest { GameId = 1, Quantity = 0 });
-        Assert.Contains(result, r => r.ErrorMessage == "Số lượng phải từ 1 đến 99.");
+        Assert.Contains(result, r => r.ErrorMessage == "Số lượng phải từ 1 đến 10.");
+    }
+
+    [Fact]
+    public void AddCartItemRequest_RejectsQuantityOverTen()
+    {
+        var result = Validate(new AddCartItemRequest { GameId = 1, Quantity = 11 });
+        Assert.Contains(result, r => r.ErrorMessage == "Số lượng phải từ 1 đến 10.");
     }
 
     [Fact]

@@ -33,8 +33,9 @@ public class AdminService : IAdminService
         var totalUsers = await _db.Users.CountAsync();
         var totalGames = await _db.Games.CountAsync(g => g.IsActive);
         var totalOrders = await _db.Orders.CountAsync(o => o.Status != "Cancelled");
+        // Doanh thu chỉ tính trên đơn đã hoàn tất (thực thu), không tính Pending/Processing
         var totalRevenue = await _db.Orders
-            .Where(o => o.Status != "Cancelled")
+            .Where(o => o.Status == "Completed")
             .SumAsync(o => (decimal?)o.Total) ?? 0;
 
         // 7 ngày gần nhất
@@ -42,7 +43,7 @@ public class AdminService : IAdminService
         var prevStart = start.AddDays(-7);
 
         var sales = await _db.Orders
-            .Where(o => o.CreatedAt >= start && o.Status != "Cancelled")
+            .Where(o => o.CreatedAt >= start && o.Status == "Completed")
             .ToListAsync();
 
         var recentSales = Enumerable.Range(0, 7).Select(i =>
@@ -57,9 +58,9 @@ public class AdminService : IAdminService
             };
         }).ToList();
 
-        // 7 ngày trước đó (để so sánh % tăng/giảm)
+        // 7 ngày trước đó (để so sánh % tăng/giảm) — chỉ đơn hoàn tất
         var previousRevenue = await _db.Orders
-            .Where(o => o.CreatedAt >= prevStart && o.CreatedAt < start && o.Status != "Cancelled")
+            .Where(o => o.CreatedAt >= prevStart && o.CreatedAt < start && o.Status == "Completed")
             .SumAsync(o => (decimal?)o.Total) ?? 0;
 
         var currentRevenue = recentSales.Sum(s => s.Revenue);
@@ -118,7 +119,7 @@ public class AdminService : IAdminService
     }
 
     public async Task<List<UserDto>> GetUsersAsync() =>
-        await _db.Users.Include(u => u.Role)
+        await _db.Users.AsNoTracking().Include(u => u.Role)
             .OrderByDescending(u => u.CreatedAt)
             .Select(u => Mapping.ToDto(u))
             .ToListAsync();
@@ -148,6 +149,7 @@ public class AdminService : IAdminService
     public async Task<List<OrderDto>> GetAllOrdersAsync()
     {
         var orders = await _db.Orders
+            .AsNoTracking()
             .Include(o => o.OrderDetails)
             .Include(o => o.Payments)
             .OrderByDescending(o => o.CreatedAt)
@@ -171,7 +173,7 @@ public class AdminService : IAdminService
         page = page < 1 ? 1 : page;
         pageSize = pageSize < 1 ? 20 : pageSize > 100 ? 100 : pageSize;
 
-        var query = _db.Reviews.AsQueryable();
+        var query = _db.Reviews.AsNoTracking().AsQueryable();
         var total = await query.CountAsync();
         var items = await query
             .Include(r => r.User)
@@ -201,11 +203,11 @@ public class AdminService : IAdminService
     }
 
     public async Task<List<DeveloperDto>> GetDevelopersAsync() =>
-        await _db.Developers.OrderBy(d => d.Name)
+        await _db.Developers.AsNoTracking().OrderBy(d => d.Name)
             .Select(d => new DeveloperDto { Id = d.Id, Name = d.Name }).ToListAsync();
 
     public async Task<List<PublisherDto>> GetPublishersAsync() =>
-        await _db.Publishers.OrderBy(p => p.Name)
+        await _db.Publishers.AsNoTracking().OrderBy(p => p.Name)
             .Select(p => new PublisherDto { Id = p.Id, Name = p.Name }).ToListAsync();
 
     public async Task<DeveloperDto> CreateDeveloperAsync(string name)
@@ -228,6 +230,8 @@ public class AdminService : IAdminService
     {
         var dev = await _db.Developers.FindAsync(id);
         if (dev == null) return (false, "Không tìm thấy.");
+        if (await _db.GameDevelopers.AnyAsync(gd => gd.DeveloperId == id))
+            return (false, "Không thể xóa developer đang được dùng bởi một hoặc nhiều game.");
         _db.Developers.Remove(dev);
         await _db.SaveChangesAsync();
         return (true, null);
@@ -237,6 +241,8 @@ public class AdminService : IAdminService
     {
         var pub = await _db.Publishers.FindAsync(id);
         if (pub == null) return (false, "Không tìm thấy.");
+        if (await _db.GamePublishers.AnyAsync(gp => gp.PublisherId == id))
+            return (false, "Không thể xóa publisher đang được dùng bởi một hoặc nhiều game.");
         _db.Publishers.Remove(pub);
         await _db.SaveChangesAsync();
         return (true, null);

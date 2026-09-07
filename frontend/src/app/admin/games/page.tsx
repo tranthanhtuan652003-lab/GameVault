@@ -17,17 +17,23 @@ export default function AdminGamesPage() {
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState("");
   const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [showForm, setShowForm] = useState(false);
   const [editingId, setEditingId] = useState<number | null>(null);
 
   useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(search), 350);
+    return () => clearTimeout(t);
+  }, [search]);
+
+  useEffect(() => {
     if (!token) return;
-    api.games
-      .list({ page: 1, pageSize: 100, search: search || undefined })
+    api.admin.games
+      .all({ page: 1, pageSize: 100, search: debouncedSearch || undefined }, token)
       .then((r) => setGames(r.items))
       .catch((e) => setError(e.message))
       .finally(() => setLoading(false));
-  }, [token, search]);
+  }, [token, debouncedSearch]);
 
   const handleDelete = async (g: GameDto) => {
     if (!token) return;
@@ -41,13 +47,24 @@ export default function AdminGamesPage() {
     }
   };
 
+  const handleRestore = async (g: GameDto) => {
+    if (!token) return;
+    try {
+      await api.admin.games.restore(g.id, token);
+      setGames((list) => list.map((x) => (x.id === g.id ? { ...x, isActive: true } : x)));
+      toast("Đã khôi phục game");
+    } catch (err) {
+      toast(err instanceof ApiError ? err.message : "Có lỗi xảy ra", "error");
+    }
+  };
+
   return (
     <div className="p-6">
       <div className="mb-6 flex flex-wrap items-center justify-between gap-3">
         <div>
           <h1 className="text-2xl font-extrabold text-ink">Game</h1>
           <p className="text-sm text-ink-soft">
-            {games.length} game đang hoạt động
+            {games.length} game
           </p>
         </div>
         <div className="flex gap-2">
@@ -160,21 +177,32 @@ export default function AdminGamesPage() {
                   </td>
                   <td className="p-4">
                     <div className="flex gap-1.5">
-                      <button
-                        onClick={() => {
-                          setEditingId(g.id);
-                          setShowForm(true);
-                        }}
-                        className="rounded-lg border border-edge px-2.5 py-1 text-xs font-semibold text-ink transition hover:bg-surface-2"
-                      >
-                        Sửa
-                      </button>
-                      <button
-                        onClick={() => handleDelete(g)}
-                        className="rounded-lg border border-danger/40 px-2.5 py-1 text-xs font-semibold text-danger transition hover:bg-danger/10"
-                      >
-                        Xóa
-                      </button>
+                      {g.isActive ? (
+                        <>
+                          <button
+                            onClick={() => {
+                              setEditingId(g.id);
+                              setShowForm(true);
+                            }}
+                            className="rounded-lg border border-edge px-2.5 py-1 text-xs font-semibold text-ink transition hover:bg-surface-2"
+                          >
+                            Sửa
+                          </button>
+                          <button
+                            onClick={() => handleDelete(g)}
+                            className="rounded-lg border border-danger/40 px-2.5 py-1 text-xs font-semibold text-danger transition hover:bg-danger/10"
+                          >
+                            Xóa
+                          </button>
+                        </>
+                      ) : (
+                        <button
+                          onClick={() => handleRestore(g)}
+                          className="rounded-lg border border-accent/40 px-2.5 py-1 text-xs font-semibold text-accent transition hover:bg-accent/10"
+                        >
+                          Khôi phục
+                        </button>
+                      )}
                     </div>
                   </td>
                 </tr>

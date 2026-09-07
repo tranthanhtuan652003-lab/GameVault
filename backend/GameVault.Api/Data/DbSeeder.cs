@@ -30,12 +30,14 @@ public static class DbSeeder
         if (await db.Users.AnyAsync(u => u.UserName == "admin")) return;
 
         var adminRole = await db.Roles.FirstAsync(r => r.Name == "Admin");
+        // Cho phép đặt mật khẩu admin qua env; mặc định chỉ dùng cho Development.
+        var password = Environment.GetEnvironmentVariable("GAMEVAULT_ADMIN_PASSWORD") ?? "Admin@123";
         var admin = new User
         {
             UserName = "admin",
             Email = "admin@gamevault.com",
             FullName = "System Admin",
-            PasswordHash = BCrypt.Net.BCrypt.HashPassword("Admin@123"),
+            PasswordHash = BCrypt.Net.BCrypt.HashPassword(password),
             RoleId = adminRole.Id
         };
         db.Users.Add(admin);

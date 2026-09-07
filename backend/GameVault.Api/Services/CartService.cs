@@ -48,6 +48,7 @@ public class CartService : ICartService
                 CartId = cart.Id,
                 GameId = game.Id,
                 Quantity = request.Quantity,
+                BasePrice = game.Price,
                 UnitPrice = game.DiscountPrice ?? game.Price,
                 AddedAt = DateTime.UtcNow
             });
@@ -113,9 +114,10 @@ public class CartService : ICartService
     private static CartDto ToDto(Models.Cart cart)
     {
         var items = cart.Items.Select(ToItemDto).ToList();
-        // Effective (locked) price is stored in CartItem.UnitPrice at add-time.
-        // Subtotal and totals are always derived from this locked price, so the
-        // cart total can never drift from what the order will charge.
+        // Effective (locked) price is stored in CartItem.UnitPrice at add-time;
+        // the nominal base price is locked in CartItem.BasePrice. Everything is
+        // derived from these locked values so the cart can never drift from the
+        // order totals even if the admin changes the game's live price later.
         var subtotal = items.Sum(i => i.UnitPrice * i.Quantity);
         var discount = 0m;
         foreach (var item in items)
@@ -142,10 +144,10 @@ public class CartService : ICartService
         GameSlug = item.Game.Slug,
         CoverImage = item.Game.CoverImage,
         Quantity = item.Quantity,
-        // nominal base price (from the game) for display
-        UnitPrice = item.Game.Price,
-        // stored, locked effective price == price actually charged per unit
-        DiscountPrice = item.UnitPrice < item.Game.Price ? item.UnitPrice : (decimal?)null,
+        // nominal base price locked at add-time (from CartItem.BasePrice)
+        UnitPrice = item.BasePrice,
+        // locked effective price == price actually charged per unit
+        DiscountPrice = item.UnitPrice < item.BasePrice ? item.UnitPrice : (decimal?)null,
         // charged at the locked effective price
         LineTotal = item.UnitPrice * item.Quantity
     };

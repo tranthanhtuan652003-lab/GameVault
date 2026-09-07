@@ -5,6 +5,7 @@ using GameVault.Api.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Http;
 using Microsoft.AspNetCore.Mvc;
+using Microsoft.AspNetCore.RateLimiting;
 
 namespace GameVault.Api.Controllers;
 
@@ -17,6 +18,7 @@ public class AuthController : ControllerBase
     public AuthController(IAuthService auth) => _auth = auth;
 
     [HttpPost("register")]
+    [EnableRateLimiting("auth")]
     public async Task<IActionResult> Register([FromBody] RegisterRequest request)
     {
         var result = await _auth.RegisterAsync(request);
@@ -26,6 +28,7 @@ public class AuthController : ControllerBase
     }
 
     [HttpPost("login")]
+    [EnableRateLimiting("auth")]
     public async Task<IActionResult> Login([FromBody] LoginRequest request)
     {
         var result = await _auth.LoginAsync(request);

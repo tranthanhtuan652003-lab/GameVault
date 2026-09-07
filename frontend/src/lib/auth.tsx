@@ -4,6 +4,7 @@ import {
   createContext,
   useCallback,
   useContext,
+  useEffect,
   useMemo,
   useSyncExternalStore,
   type ReactNode,
@@ -142,6 +143,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       logout();
     }
   }, [token, setUser, logout]);
+
+  // Xử lý tập trung: bất kỳ request nào nhận 401 khi đã đăng nhập
+  // (token hết hạn, user bị khóa...) đều tự động đăng xuất.
+  useEffect(() => {
+    const onUnauthorized = () => logout();
+    window.addEventListener("gamevault:unauthorized", onUnauthorized);
+    return () => window.removeEventListener("gamevault:unauthorized", onUnauthorized);
+  }, [logout]);
 
   const value = useMemo<AuthContextValue>(
     () => ({

@@ -20,6 +20,8 @@ export function gamesQueryFromParams(params: Params): {
   const sort = first(params.sort) ?? "newest";
   const pageRaw = parseInt(first(params.page) ?? "1", 10);
   const page = Number.isFinite(pageRaw) && pageRaw > 0 ? pageRaw : 1;
+  const minPriceRaw = parseFloat(first(params.minPrice) ?? "");
+  const maxPriceRaw = parseFloat(first(params.maxPrice) ?? "");
 
   const query: GameListParams = {
     page,
@@ -28,6 +30,8 @@ export function gamesQueryFromParams(params: Params): {
     search: search || undefined,
     genre: genre || undefined,
     platform: platform || undefined,
+    minPrice: Number.isFinite(minPriceRaw) && minPriceRaw >= 0 ? minPriceRaw : undefined,
+    maxPrice: Number.isFinite(maxPriceRaw) && maxPriceRaw >= 0 ? maxPriceRaw : undefined,
   };
 
   return { query, sort, genre, platform, search, page };

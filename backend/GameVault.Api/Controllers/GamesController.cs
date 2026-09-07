@@ -71,8 +71,9 @@ public class GamesController : ControllerBase
     [HttpPost]
     public async Task<IActionResult> CreateGame([FromBody] GameCreateRequest request)
     {
-        var game = await _games.CreateAsync(request);
-        return StatusCode(201, Res.Ok("Tạo game thành công", game));
+        var result = await _games.CreateAsync(request);
+        if (!result.Success) return BadRequest(Res.Fail(result.Error!));
+        return StatusCode(201, Res.Ok("Tạo game thành công", result.Data));
     }
 
     [Authorize(Roles = "Admin")]
@@ -91,6 +92,26 @@ public class GamesController : ControllerBase
         var result = await _games.DeleteAsync(id);
         if (!result.Success) return NotFound(Res.Fail(result.Error!));
         return Ok(Res.Ok("Xóa game thành công"));
+    }
+
+    [Authorize(Roles = "Admin")]
+    [HttpPost("{id:int}/restore")]
+    public async Task<IActionResult> RestoreGame(int id)
+    {
+        var result = await _games.RestoreAsync(id);
+        if (!result.Success) return NotFound(Res.Fail(result.Error!));
+        return Ok(Res.Ok("Khôi phục game thành công"));
+    }
+
+    [Authorize(Roles = "Admin")]
+    [HttpGet("admin/all")]
+    public async Task<IActionResult> GetAdminGames(
+        [FromQuery] int page = 1,
+        [FromQuery] int pageSize = 20,
+        [FromQuery] string? search = null)
+    {
+        var result = await _games.GetAdminGamesAsync(page, pageSize, search);
+        return Ok(Res.Ok("Danh sách game (admin)", result));
     }
 
     [Authorize(Roles = "Admin")]

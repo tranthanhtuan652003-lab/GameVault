@@ -23,6 +23,7 @@ public class GameService : IGameService
         pageSize = pageSize < 1 ? 12 : pageSize > 100 ? 100 : pageSize;
 
         var query = _db.Games
+            .AsNoTracking()
             .Include(g => g.GameGenres).ThenInclude(gg => gg.Genre)
             .Include(g => g.GamePlatforms).ThenInclude(gp => gp.Platform)
             .Include(g => g.GameDevelopers).ThenInclude(gd => gd.Developer)
@@ -75,6 +76,7 @@ public class GameService : IGameService
             "title" => query.OrderBy(g => g.Title),
             "title_desc" => query.OrderByDescending(g => g.Title),
             "price" => query.OrderBy(g => (g.DiscountPrice ?? g.Price)),
+            "price_asc" => query.OrderBy(g => (g.DiscountPrice ?? g.Price)),
             "price_desc" => query.OrderByDescending(g => (g.DiscountPrice ?? g.Price)),
             "rating" => query.OrderByDescending(g => g.Rating),
             "newest" => query.OrderByDescending(g => g.ReleaseDate),
@@ -109,8 +111,16 @@ public class GameService : IGameService
         return game == null ? null : ToDto(game);
     }
 
-    public async Task<GameDto> CreateAsync(GameCreateRequest request)
+    public async Task<(bool Success, string? Error, GameDto? Data)> CreateAsync(GameCreateRequest request)
     {
+        if (request.DiscountPrice.HasValue && request.DiscountPrice.Value > request.Price)
+            return (false, "Giá khuyến mãi không được lớn hơn giá gốc.", null);
+        if (request.Price < 0 || (request.DiscountPrice.HasValue && request.DiscountPrice.Value < 0))
+            return (false, "Giá không được âm.", null);
+
+        if (string.IsNullOrWhiteSpace(request.Title))
+            return (false, "Tên game là bắt buộc.", null);
+
         var slug = Slugify(request.Title);
         var baseSlug = slug;
         var count = 1;
@@ -138,11 +148,16 @@ public class GameService : IGameService
 
         _db.Games.Add(game);
         await _db.SaveChangesAsync();
-        return (await GetByIdAsync(game.Id))!;
+        return (true, null, await GetByIdAsync(game.Id));
     }
 
     public async Task<(bool Success, string? Error, GameDto? Data)> UpdateAsync(int id, GameCreateRequest request)
     {
+        if (request.DiscountPrice.HasValue && request.DiscountPrice.Value > request.Price)
+            return (false, "Giá khuyến mãi không được lớn hơn giá gốc.", null);
+        if (request.Price < 0 || (request.DiscountPrice.HasValue && request.DiscountPrice.Value < 0))
+            return (false, "Giá không được âm.", null);
+
         var game = await _db.Games
             .Include(g => g.GameGenres)
             .Include(g => g.GamePlatforms)
@@ -162,17 +177,40 @@ public class GameService : IGameService
         game.TrailerUrl = request.TrailerUrl?.Trim() ?? string.Empty;
         game.SystemRequirements = request.SystemRequirements?.Trim() ?? string.Empty;
 
-        // Xóa relations cũ và thêm mới
-        _db.GameGenres.RemoveRange(game.GameGenres);
-        _db.GamePlatforms.RemoveRange(game.GamePlatforms);
-        _db.GameDevelopers.RemoveRange(game.GameDevelopers);
-        _db.GamePublishers.RemoveRange(game.GamePublishers);
-        _db.GameImages.RemoveRange(game.GameImages);
-
-        ApplyRelations(game, request);
+        // Chỉ thêm/bớt relation thay đổi (dùng diff) để EF Core không bị lỗi
+        // "same key already tracked" khi xoá rồi thêm lại cùng cặp khoá.
+        SyncRelations(game.GameGenres, request.GenreIds, genreId => new GameGenre { GenreId = genreId }, e => e.GenreId);
+        SyncRelations(game.GamePlatforms, request.PlatformIds, platformId => new GamePlatform { PlatformId = platformId }, e => e.PlatformId);
+        SyncRelations(game.GameDevelopers, request.DeveloperIds, devId => new GameDeveloper { DeveloperId = devId }, e => e.DeveloperId);
+        SyncRelations(game.GamePublishers, request.PublisherIds, pubId => new GamePublisher { PublisherId = pubId }, e => e.PublisherId);
+        SyncImages(game, request);
 
         await _db.SaveChangesAsync();
         return (true, null, await GetByIdAsync(id));
+    }
+
+    private static void SyncRelations<T>(ICollection<T> current, List<int> requested, Func<int, T> create, Func<T, int> relateId)
+        where T : class
+    {
+        var wanted = requested.Distinct().ToHashSet();
+        var stale = current.Where(e => !wanted.Contains(relateId(e))).ToList();
+        foreach (var e in stale) current.Remove(e);
+
+        var have = current.Select(relateId).ToHashSet();
+        foreach (var id in wanted.Where(id => !have.Contains(id)))
+            current.Add(create(id));
+    }
+
+    private static void SyncImages(Game game, GameCreateRequest request)
+    {
+        var wanted = request.Images.Where(i => !string.IsNullOrWhiteSpace(i))
+            .Select(i => i.Trim()).Distinct().ToHashSet();
+        var stale = game.GameImages.Where(i => !wanted.Contains(i.ImageUrl)).ToList();
+        foreach (var i in stale) game.GameImages.Remove(i);
+
+        var have = game.GameImages.Select(i => i.ImageUrl).ToHashSet();
+        foreach (var url in wanted.Where(u => !have.Contains(u)))
+            game.GameImages.Add(new GameImage { ImageUrl = url, IsCover = false });
     }
 
     public async Task<(bool Success, string? Error)> DeleteAsync(int id)
@@ -184,6 +222,45 @@ public class GameService : IGameService
         game.IsActive = false;
         await _db.SaveChangesAsync();
         return (true, null);
+    }
+
+    public async Task<(bool Success, string? Error)> RestoreAsync(int id)
+    {
+        var game = await _db.Games.FindAsync(id);
+        if (game == null) return (false, "Không tìm thấy game.");
+        game.IsActive = true;
+        await _db.SaveChangesAsync();
+        return (true, null);
+    }
+
+    public async Task<PagedResult<GameDto>> GetAdminGamesAsync(int page, int pageSize, string? search)
+    {
+        page = page < 1 ? 1 : page;
+        pageSize = pageSize < 1 ? 20 : pageSize > 100 ? 100 : pageSize;
+
+        var query = _db.Games.AsQueryable();
+
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            var term = search.Trim().ToLower();
+            query = query.Where(g => g.Title.ToLower().Contains(term));
+        }
+
+        var totalCount = await query.CountAsync();
+        var items = await query
+            .OrderByDescending(g => g.CreatedAt)
+            .Skip((page - 1) * pageSize)
+            .Take(pageSize)
+            .ToListAsync();
+
+        return new PagedResult<GameDto>
+        {
+            Page = page,
+            PageSize = pageSize,
+            TotalCount = totalCount,
+            TotalPages = (int)Math.Ceiling(totalCount / (double)pageSize),
+            Items = items.Select(ToDto).ToList()
+        };
     }
 
     public async Task<List<GenreDto>> GetGenresAsync() =>
@@ -218,6 +295,8 @@ public class GameService : IGameService
     {
         var genre = await _db.Genres.FindAsync(id);
         if (genre == null) return (false, "Không tìm thấy thể loại.");
+        if (await _db.GameGenres.AnyAsync(gg => gg.GenreId == id))
+            return (false, "Không thể xóa thể loại đang được dùng bởi một hoặc nhiều game.");
         _db.Genres.Remove(genre);
         await _db.SaveChangesAsync();
         return (true, null);
@@ -227,6 +306,8 @@ public class GameService : IGameService
     {
         var platform = await _db.Platforms.FindAsync(id);
         if (platform == null) return (false, "Không tìm thấy nền tảng.");
+        if (await _db.GamePlatforms.AnyAsync(gp => gp.PlatformId == id))
+            return (false, "Không thể xóa nền tảng đang được dùng bởi một hoặc nhiều game.");
         _db.Platforms.Remove(platform);
         await _db.SaveChangesAsync();
         return (true, null);
@@ -235,6 +316,7 @@ public class GameService : IGameService
     private async Task<Game?> LoadGameAsync(Expression<Func<Game, bool>> predicate)
     {
         return await _db.Games
+            .AsNoTracking()
             .Include(g => g.GameGenres).ThenInclude(gg => gg.Genre)
             .Include(g => g.GamePlatforms).ThenInclude(gp => gp.Platform)
             .Include(g => g.GameDevelopers).ThenInclude(gd => gd.Developer)

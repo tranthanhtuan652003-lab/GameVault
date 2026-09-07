@@ -189,6 +189,7 @@ public class GameVaultDbContext : DbContext
             e.HasOne(r => r.User).WithMany(u => u.Reviews).HasForeignKey(r => r.UserId).OnDelete(DeleteBehavior.Cascade);
             e.HasOne(r => r.Game).WithMany(g => g.Reviews).HasForeignKey(r => r.GameId).OnDelete(DeleteBehavior.Cascade);
             e.HasIndex(r => new { r.GameId, r.UserId }).IsUnique();
+            e.HasIndex(r => r.CreatedAt);
         });
     }
 
@@ -209,6 +210,7 @@ public class GameVaultDbContext : DbContext
             e.HasOne(i => i.Wishlist).WithMany(w => w.Items).HasForeignKey(i => i.WishlistId).OnDelete(DeleteBehavior.Cascade);
             e.HasOne(i => i.Game).WithMany(g => g.WishlistItems).HasForeignKey(i => i.GameId).OnDelete(DeleteBehavior.Cascade);
             e.HasIndex(i => new { i.WishlistId, i.GameId }).IsUnique();
+            e.HasIndex(i => new { i.WishlistId, i.AddedAt });
         });
     }
 
@@ -226,6 +228,7 @@ public class GameVaultDbContext : DbContext
         {
             e.ToTable("CartItems");
             e.HasKey(i => i.Id);
+            e.Property(i => i.BasePrice).HasPrecision(18, 2).IsRequired();
             e.Property(i => i.UnitPrice).HasPrecision(18, 2).IsRequired();
 
             e.HasOne(i => i.Cart).WithMany(c => c.Items).HasForeignKey(i => i.CartId).OnDelete(DeleteBehavior.Cascade);
@@ -251,6 +254,8 @@ public class GameVaultDbContext : DbContext
             e.Property(o => o.Status).HasMaxLength(30).IsRequired();
             e.HasIndex(o => o.OrderNumber).IsUnique();
             e.HasIndex(o => o.Status);
+            e.HasIndex(o => o.CreatedAt);
+            e.HasIndex(o => new { o.UserId, o.CreatedAt });
 
             e.HasOne(o => o.User).WithMany(u => u.Orders).HasForeignKey(o => o.UserId).OnDelete(DeleteBehavior.Restrict);
         });
@@ -260,6 +265,8 @@ public class GameVaultDbContext : DbContext
             e.ToTable("OrderDetails");
             e.HasKey(d => d.Id);
             e.Property(d => d.GameTitle).HasMaxLength(200).IsRequired();
+            e.Property(d => d.Slug).HasMaxLength(200);
+            e.Property(d => d.CoverImage).HasMaxLength(1000);
             e.Property(d => d.UnitPrice).HasPrecision(18, 2).IsRequired();
             e.Property(d => d.Discount).HasPrecision(18, 2).IsRequired();
             e.Property(d => d.LineTotal).HasPrecision(18, 2).IsRequired();

@@ -115,6 +115,7 @@ export function ReviewsSection({
                 value={comment}
                 onChange={(e) => setComment(e.target.value)}
                 rows={4}
+                maxLength={1000}
                 placeholder="Chia sẻ trải nghiệm chơi game của bạn..."
                 className="mt-4 w-full rounded-lg border border-edge bg-canvas px-4 py-3 text-sm text-ink placeholder:text-ink-soft/60 focus:border-accent focus:outline-none"
               />

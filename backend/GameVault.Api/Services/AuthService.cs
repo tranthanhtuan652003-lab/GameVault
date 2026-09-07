@@ -31,6 +31,10 @@ public class AuthService : IAuthService
 
         if (string.IsNullOrWhiteSpace(request.UserName) || request.UserName.Length < 3)
             return (false, "Tên đăng nhập phải có ít nhất 3 ký tự.", null);
+        if (request.UserName.Length > 50)
+            return (false, "Tên đăng nhập không được quá 50 ký tự.", null);
+        if (!System.Text.RegularExpressions.Regex.IsMatch(request.UserName, "^[a-zA-Z0-9_.]+$"))
+            return (false, "Tên đăng nhập chỉ được chứa chữ, số, dấu gạch dưới và dấu chấm.", null);
         if (!request.Email.Contains('@'))
             return (false, "Email không hợp lệ.", null);
         if (string.IsNullOrWhiteSpace(request.Password) || request.Password.Length < 6)
@@ -152,14 +156,26 @@ public class AuthService : IAuthService
         if (!AllowedAvatarExtensions.Contains(ext))
             return (false, "Định dạng ảnh không hợp lệ (chỉ hỗ trợ jpg, jpeg, png, webp, gif, bmp).", null);
 
-        var safeName = $"{userName}-{Guid.NewGuid():N}{ext}";
+        // Validate the actual file signature, not just the extension, so a
+        // disguised HTML/script payload cannot be stored as an "image".
+        await using var probe = file.OpenReadStream();
+        var header = new byte[12];
+        var read = probe.Read(header, 0, header.Length);
+        if (!IsValidImageSignature(header, read))
+            return (false, "Nội dung file không phải ảnh hợp lệ.", null);
+
+        // Filename is derived from the numeric user id (never from the
+        // user-controlled username) so path traversal characters like "..\\"
+        // in a username cannot escape the uploads directory.
+        var safeName = $"{user.Id}-{Guid.NewGuid():N}{ext}";
         var uploadDir = Path.Combine(_env.WebRootPath ?? Path.Combine(_env.ContentRootPath, "wwwroot"), "uploads", "avatars");
         Directory.CreateDirectory(uploadDir);
 
         var filePath = Path.Combine(uploadDir, safeName);
+        probe.Position = 0;
         using (var stream = System.IO.File.Create(filePath))
         {
-            await file.CopyToAsync(stream);
+            await probe.CopyToAsync(stream);
         }
 
         // Xóa ảnh cũ nếu nó nằm trong thư mục uploads/avatars
@@ -178,6 +194,19 @@ public class AuthService : IAuthService
         await _db.SaveChangesAsync();
 
         return (true, null, relativeUrl);
+    }
+
+    // Signature check: PNG, JPEG, GIF, WEBP, BMP headers.
+    private static bool IsValidImageSignature(byte[] header, int read)
+    {
+        if (read < 4) return false;
+
+        if (header[0] == 0x89 && header[1] == 0x50 && header[2] == 0x4E && header[3] == 0x47) return true; // PNG
+        if (header[0] == 0xFF && header[1] == 0xD8 && header[2] == 0xFF) return true;                     // JPEG
+        if (header[0] == 0x47 && header[1] == 0x49 && header[2] == 0x46) return true;                     // GIF
+        if (read >= 4 && header[0] == 0x52 && header[1] == 0x49 && header[2] == 0x46 && header[3] == 0x46) return true; // WEBP (RIFF....WEBP)
+        if (header[0] == 0x42 && header[1] == 0x4D) return true;                                         // BMP
+        return false;
     }
 
     private LoginResponse BuildResponse(User user, string token) => new()

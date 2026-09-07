@@ -28,6 +28,11 @@ public class OrderService : IOrderService
         if (string.IsNullOrWhiteSpace(request.Address))
             return (false, "Vui lòng nhập địa chỉ.", null);
 
+        // Serializable isolation locks the cart rows while the order is created,
+        // so two concurrent checkout requests cannot both drain the same cart
+        // (double-buy / double SalesCount increment).
+        await using var tx = await _db.Database.BeginTransactionAsync(System.Data.IsolationLevel.Serializable);
+
         var cart = await _db.Carts
             .Include(c => c.Items).ThenInclude(i => i.Game)
             .FirstOrDefaultAsync(c => c.UserId == userId);
@@ -41,13 +46,17 @@ public class OrderService : IOrderService
                 return (false, $"Game '{item.Game.Title}' không còn khả dụng.", null);
         }
 
-        // Pricing: CartItem.UnitPrice stores the locked effective price at add-time
-        // (discount price if discounted, else base price). Orders always charge this
-        // locked price so the amount can never drift from what the cart displayed.
-        var subtotal = cart.Items.Sum(i => i.Game.Price * i.Quantity);
+        // Pricing: CartItem stores the locked base price (BasePrice) and the
+        // locked effective price (UnitPrice) at add-time. Orders are built 100%
+        // from these locked values so nothing can drift when the admin changes
+        // a game's live price after the item was added to the cart.
+        var subtotal = cart.Items.Sum(i => i.BasePrice * i.Quantity);
         var discount = cart.Items.Sum(i =>
-            (i.Game.Price - i.UnitPrice) * i.Quantity);
+            (i.BasePrice - i.UnitPrice) * i.Quantity);
         var total = cart.Items.Sum(i => i.UnitPrice * i.Quantity);
+
+        if (total <= 0)
+            return (false, "Số tiền đơn hàng không hợp lệ.", null);
 
         var order = new Order
         {
@@ -74,7 +83,7 @@ public class OrderService : IOrderService
                 CoverImage = item.Game.CoverImage,
                 Quantity = item.Quantity,
                 UnitPrice = item.UnitPrice,
-                Discount = (item.Game.Price - item.UnitPrice) * item.Quantity,
+                Discount = (item.BasePrice - item.UnitPrice) * item.Quantity,
                 LineTotal = item.UnitPrice * item.Quantity
             });
 
@@ -99,6 +108,7 @@ public class OrderService : IOrderService
         _db.Orders.Add(order);
 
         await _db.SaveChangesAsync();
+        await tx.CommitAsync();
         await _db.Entry(order).ReloadAsync();
 
         return (true, null, await GetOrderAsync(userId, order.Id, true));
@@ -107,6 +117,7 @@ public class OrderService : IOrderService
     public async Task<List<OrderDto>> GetUserOrdersAsync(int userId)
     {
         var orders = await _db.Orders
+            .AsNoTracking()
             .Include(o => o.OrderDetails)
             .Include(o => o.Payments)
             .Where(o => o.UserId == userId)
@@ -118,6 +129,7 @@ public class OrderService : IOrderService
     public async Task<OrderDto?> GetOrderAsync(int userId, int orderId, bool isAdmin = false)
     {
         var query = _db.Orders
+            .AsNoTracking()
             .Include(o => o.OrderDetails)
             .Include(o => o.Payments)
             .AsQueryable();
@@ -144,7 +156,7 @@ public class OrderService : IOrderService
 
     private static string GenerateOrderNumber()
     {
-        var ts = DateTime.UtcNow.ToString("yyyyMMddHHmmss");
+        var ts = DateTime.UtcNow.ToString("yyyyMMddHHmmssfff");
         var rand = new Random().Next(1000, 9999);
         return $"GV-{ts}-{rand}";
     }

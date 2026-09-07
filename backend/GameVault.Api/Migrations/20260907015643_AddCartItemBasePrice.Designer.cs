@@ -4,6 +4,7 @@ using GameVault.Api.Data;
 using Microsoft.EntityFrameworkCore;
 using Microsoft.EntityFrameworkCore.Infrastructure;
 using Microsoft.EntityFrameworkCore.Metadata;
+using Microsoft.EntityFrameworkCore.Migrations;
 using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 
 #nullable disable
@@ -11,9 +12,11 @@ using Microsoft.EntityFrameworkCore.Storage.ValueConversion;
 namespace GameVault.Api.Migrations
 {
     [DbContext(typeof(GameVaultDbContext))]
-    partial class GameVaultDbContextModelSnapshot : ModelSnapshot
+    [Migration("20260907015643_AddCartItemBasePrice")]
+    partial class AddCartItemBasePrice
     {
-        protected override void BuildModel(ModelBuilder modelBuilder)
+        /// <inheritdoc />
+        protected override void BuildTargetModel(ModelBuilder modelBuilder)
         {
 #pragma warning disable 612, 618
             modelBuilder
@@ -356,14 +359,12 @@ namespace GameVault.Api.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("CreatedAt");
-
                     b.HasIndex("OrderNumber")
                         .IsUnique();
 
                     b.HasIndex("Status");
 
-                    b.HasIndex("UserId", "CreatedAt");
+                    b.HasIndex("UserId");
 
                     b.ToTable("Orders", (string)null);
                 });
@@ -378,8 +379,7 @@ namespace GameVault.Api.Migrations
 
                     b.Property<string>("CoverImage")
                         .IsRequired()
-                        .HasMaxLength(1000)
-                        .HasColumnType("nvarchar(1000)");
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<decimal>("Discount")
                         .HasPrecision(18, 2)
@@ -405,8 +405,7 @@ namespace GameVault.Api.Migrations
 
                     b.Property<string>("Slug")
                         .IsRequired()
-                        .HasMaxLength(200)
-                        .HasColumnType("nvarchar(200)");
+                        .HasColumnType("nvarchar(max)");
 
                     b.Property<decimal>("UnitPrice")
                         .HasPrecision(18, 2)
@@ -546,8 +545,6 @@ namespace GameVault.Api.Migrations
 
                     b.HasKey("Id");
 
-                    b.HasIndex("CreatedAt");
-
                     b.HasIndex("UserId");
 
                     b.HasIndex("GameId", "UserId")
@@ -673,8 +670,6 @@ namespace GameVault.Api.Migrations
                     b.HasKey("Id");
 
                     b.HasIndex("GameId");
-
-                    b.HasIndex("WishlistId", "AddedAt");
 
                     b.HasIndex("WishlistId", "GameId")
                         .IsUnique();

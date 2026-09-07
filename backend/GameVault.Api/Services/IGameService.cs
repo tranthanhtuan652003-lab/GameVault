@@ -9,9 +9,11 @@ public interface IGameService
         string? sort, float? minRating);
     Task<GameDto?> GetByIdAsync(int id);
     Task<GameDto?> GetBySlugAsync(string slug);
-    Task<GameDto> CreateAsync(GameCreateRequest request);
+    Task<(bool Success, string? Error, GameDto? Data)> CreateAsync(GameCreateRequest request);
     Task<(bool Success, string? Error, GameDto? Data)> UpdateAsync(int id, GameCreateRequest request);
     Task<(bool Success, string? Error)> DeleteAsync(int id);
+    Task<(bool Success, string? Error)> RestoreAsync(int id);
+    Task<PagedResult<GameDto>> GetAdminGamesAsync(int page, int pageSize, string? search);
     Task<List<GenreDto>> GetGenresAsync();
     Task<List<PlatformDto>> GetPlatformsAsync();
     Task<GenreDto> CreateGenreAsync(string name);
