@@ -10,6 +10,7 @@ import {
   Desktop,
   User,
   BuildingOffice,
+  Play,
 } from "@phosphor-icons/react";
 import type { GameDto, ReviewsResponse } from "@/lib/types";
 import { formatPrice, formatDate } from "@/lib/format";
@@ -251,10 +252,81 @@ export function GameDetailClient({
         )}
       </div>
 
+      {/* Trailer */}
+      {game.trailerUrl && <TrailerSection url={game.trailerUrl} />}
+
       {/* Reviews */}
       <ReviewsSection gameId={game.id} initial={reviews} />
     </div>
   );
+}
+
+function TrailerSection({ url }: { url: string }) {
+  const embed = getTrailerEmbed(url);
+  if (!embed) {
+    return (
+      <div className="mt-12">
+        <h2 className="mb-3 text-xl font-bold text-ink">Trailer</h2>
+        <a
+          href={url}
+          target="_blank"
+          rel="noopener noreferrer"
+          className="inline-flex items-center gap-2 rounded-xl bg-accent px-5 py-3 text-sm font-semibold text-white transition hover:bg-accent/90"
+        >
+          <Play size={18} weight="fill" /> Xem trailer
+        </a>
+      </div>
+    );
+  }
+  const isDirect = embed.startsWith("video:");
+  return (
+    <div className="mt-12">
+      <h2 className="mb-3 text-xl font-bold text-ink">Trailer</h2>
+      <div className="overflow-hidden rounded-2xl border border-edge bg-surface">
+        {isDirect ? (
+          <video
+            src={embed.slice("video:".length)}
+            controls
+            preload="metadata"
+            className="aspect-video w-full bg-black"
+          />
+        ) : (
+          <iframe
+            src={embed}
+            title={`Trailer ${url}`}
+            allow="accelerometer; autoplay; clipboard-write; encrypted-media; gyroscope; picture-in-picture; web-share"
+            allowFullScreen
+            className="aspect-video w-full border-0 bg-black"
+          />
+        )}
+      </div>
+    </div>
+  );
+}
+
+function getTrailerEmbed(url: string): string | null {
+  if (!url) return null;
+  if (/\.(mp4|webm|ogg|ogv)(\?.*)?$/i.test(url)) return `video:${url}`;
+  try {
+    const u = new URL(url);
+    if (u.hostname.includes("youtube.com") || u.hostname.includes("youtube-nocookie.com")) {
+      const vid = u.searchParams.get("v");
+      if (vid) return `https://www.youtube-nocookie.com/embed/${vid}`;
+      if (u.pathname.startsWith("/embed/")) return url;
+    }
+    if (u.hostname === "youtu.be") {
+      const id = u.pathname.split("/").filter(Boolean)[0];
+      if (id) return `https://www.youtube-nocookie.com/embed/${id}`;
+    }
+    if (u.hostname.includes("vimeo.com")) {
+      const id = u.pathname.split("/").filter(Boolean).find((s) => /^\d+$/.test(s));
+      if (id) return `https://player.vimeo.com/video/${id}`;
+    }
+    if (u.hostname.includes("facebook.com") && u.pathname.includes("/videos/")) return null;
+  } catch {
+    return null;
+  }
+  return null;
 }
 
 function MetaRow({
