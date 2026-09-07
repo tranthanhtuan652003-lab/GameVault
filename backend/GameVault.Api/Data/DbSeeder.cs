@@ -53,7 +53,7 @@ public static class DbSeeder
     private static async Task SeedSteamGamesAsync(GameVaultDbContext db)
     {
         // Đảm bảo tồn tại các thể loại / nền tảng / phát triển / phát hành
-        // (dao động qua DB hiện có) rồi thêm 20 game Steam phổ biến nếu chưa có.
+        // (dao động qua DB hiện có) rồi seed 24 game Steam phổ biến (upsert nếu đã có).
         var genreMap = new Dictionary<string, Genre>(StringComparer.OrdinalIgnoreCase);
         var platformMap = new Dictionary<string, Platform>(StringComparer.OrdinalIgnoreCase);
         var devMap = new Dictionary<string, Developer>(StringComparer.OrdinalIgnoreCase);
@@ -81,47 +81,140 @@ public static class DbSeeder
 
         foreach (var spec in SteamGames)
         {
-            if (await db.Games.AnyAsync(g => g.Title == spec.Title)) continue;
+            var existing = await db.Games
+                .Include(g => g.GameGenres)
+                .Include(g => g.GamePlatforms)
+                .Include(g => g.GameDevelopers)
+                .Include(g => g.GamePublishers)
+                .Include(g => g.GameImages)
+                .FirstOrDefaultAsync(g => g.Title == spec.Title);
 
-            var game = new Game
+            if (existing == null)
             {
-                Title = spec.Title,
-                Slug = Slugify(spec.Title),
-                Description = spec.Description,
-                Price = spec.Price,
-                DiscountPrice = spec.DiscountPrice,
-                Rating = spec.Rating,
-                RatingCount = spec.RatingCount,
-                ReleaseDate = new DateTime(spec.ReleaseYear, spec.ReleaseMonth, spec.ReleaseDay),
-                CoverImage = SteamCover(spec.AppId, "header.jpg"),
-                TrailerUrl = SteamTrailer(spec.Title),
-                SystemRequirements = spec.SystemRequirements,
-                IsActive = true,
-                SalesCount = spec.SalesCount,
-                CreatedAt = DateTime.UtcNow
-            };
-
-            foreach (var name in spec.Genres)
-                game.GameGenres.Add(new GameGenre { GenreId = genreMap[name].Id });
-            foreach (var name in spec.Platforms)
-                game.GamePlatforms.Add(new GamePlatform { PlatformId = platformMap[name].Id });
-            foreach (var name in spec.Developers)
-                game.GameDevelopers.Add(new GameDeveloper { DeveloperId = devMap[name].Id });
-            foreach (var name in spec.Publishers)
-                game.GamePublishers.Add(new GamePublisher { PublisherId = pubMap[name].Id });
-
-            foreach (var file in new[] { "header.jpg", "library_600x900.jpg", "capsule_616x353.jpg", "library_hero.jpg", "hero_capsule.jpg" })
-                game.GameImages.Add(new GameImage
-                {
-                    ImageUrl = SteamCover(spec.AppId, file),
-                    IsCover = file == "header.jpg"
-                });
-
-            db.Games.Add(game);
+                BuildSteamGame(db, spec, genreMap, platformMap, devMap, pubMap);
+            }
+            else
+            {
+                UpsertSteamGame(existing, spec, genreMap, platformMap, devMap, pubMap);
+            }
         }
 
         await db.SaveChangesAsync();
     }
+
+    private static void BuildSteamGame(GameVaultDbContext db, SteamSeedSpec spec,
+        Dictionary<string, Genre> genreMap,
+        Dictionary<string, Platform> platformMap,
+        Dictionary<string, Developer> devMap,
+        Dictionary<string, Publisher> pubMap)
+    {
+        var game = new Game
+        {
+            Title = spec.Title,
+            Slug = Slugify(spec.Title),
+            Description = spec.Description,
+            Price = spec.Price,
+            DiscountPrice = spec.DiscountPrice,
+            Rating = spec.Rating,
+            RatingCount = spec.RatingCount,
+            ReleaseDate = new DateTime(spec.ReleaseYear, spec.ReleaseMonth, spec.ReleaseDay),
+            CoverImage = SteamCover(spec.AppId, "header.jpg"),
+            TrailerUrl = SteamTrailer(spec.Title),
+            SystemRequirements = spec.SystemRequirements,
+            IsActive = true,
+            SalesCount = spec.SalesCount,
+            CreatedAt = DateTime.UtcNow
+        };
+        AddSteamRelations(game, spec, genreMap, platformMap, devMap, pubMap);
+        db.Games.Add(game);
+    }
+
+    // Cập nhật game đã tồn tại (thường là game user tự thêm) cho khớp format seed Steam.
+    private static void UpsertSteamGame(Game game, SteamSeedSpec spec,
+        Dictionary<string, Genre> genreMap,
+        Dictionary<string, Platform> platformMap,
+        Dictionary<string, Developer> devMap,
+        Dictionary<string, Publisher> pubMap)
+    {
+        game.Description = spec.Description;
+        game.Price = spec.Price;
+        game.DiscountPrice = spec.DiscountPrice;
+        game.Rating = spec.Rating;
+        game.RatingCount = spec.RatingCount;
+        game.ReleaseDate = new DateTime(spec.ReleaseYear, spec.ReleaseMonth, spec.ReleaseDay);
+        game.CoverImage = SteamCover(spec.AppId, "header.jpg");
+        if (!IsUsableTrailer(game.TrailerUrl))
+            game.TrailerUrl = SteamTrailer(spec.Title);
+        game.SystemRequirements = spec.SystemRequirements;
+        game.SalesCount = spec.SalesCount;
+        game.IsActive = true;
+
+        SyncJunctions(game.GameGenres, spec.Genres.Select(n => genreMap[n].Id),
+            id => new GameGenre { GenreId = id }, e => e.GenreId);
+        SyncJunctions(game.GamePlatforms, spec.Platforms.Select(n => platformMap[n].Id),
+            id => new GamePlatform { PlatformId = id }, e => e.PlatformId);
+        SyncJunctions(game.GameDevelopers, spec.Developers.Select(n => devMap[n].Id),
+            id => new GameDeveloper { DeveloperId = id }, e => e.DeveloperId);
+        SyncJunctions(game.GamePublishers, spec.Publishers.Select(n => pubMap[n].Id),
+            id => new GamePublisher { PublisherId = id }, e => e.PublisherId);
+
+        var wantedImages = SteamImageFiles()
+            .Select(f => SteamCover(spec.AppId, f))
+            .ToHashSet(StringComparer.OrdinalIgnoreCase);
+        var staleImages = game.GameImages.Where(i => !wantedImages.Contains(i.ImageUrl)).ToList();
+        foreach (var image in staleImages) game.GameImages.Remove(image);
+        var haveImages = game.GameImages.Select(i => i.ImageUrl).ToHashSet(StringComparer.OrdinalIgnoreCase);
+        foreach (var url in wantedImages.Where(u => !haveImages.Contains(u)))
+            game.GameImages.Add(new GameImage { ImageUrl = url, IsCover = false });
+    }
+
+    private static void AddSteamRelations(Game game, SteamSeedSpec spec,
+        Dictionary<string, Genre> genreMap,
+        Dictionary<string, Platform> platformMap,
+        Dictionary<string, Developer> devMap,
+        Dictionary<string, Publisher> pubMap)
+    {
+        foreach (var name in spec.Genres)
+            game.GameGenres.Add(new GameGenre { GenreId = genreMap[name].Id });
+        foreach (var name in spec.Platforms)
+            game.GamePlatforms.Add(new GamePlatform { PlatformId = platformMap[name].Id });
+        foreach (var name in spec.Developers)
+            game.GameDevelopers.Add(new GameDeveloper { DeveloperId = devMap[name].Id });
+        foreach (var name in spec.Publishers)
+            game.GamePublishers.Add(new GamePublisher { PublisherId = pubMap[name].Id });
+
+        foreach (var file in SteamImageFiles())
+            game.GameImages.Add(new GameImage
+            {
+                ImageUrl = SteamCover(spec.AppId, file),
+                IsCover = file == "header.jpg"
+            });
+    }
+
+    private static void SyncJunctions<T>(ICollection<T> current, IEnumerable<int> wanted,
+        Func<int, T> create, Func<T, int> idOf)
+        where T : class
+    {
+        var wantedSet = wanted.ToHashSet();
+        var stale = current.Where(e => !wantedSet.Contains(idOf(e))).ToList();
+        foreach (var e in stale) current.Remove(e);
+        var have = current.Select(idOf).ToHashSet();
+        foreach (var id in wantedSet.Where(id => !have.Contains(id)))
+            current.Add(create(id));
+    }
+
+    private static IReadOnlyList<string> SteamImageFiles() =>
+        new[] { "header.jpg", "library_600x900.jpg", "capsule_616x353.jpg", "library_hero.jpg", "hero_capsule.jpg" };
+
+    private static bool IsUsableTrailer(string url) =>
+        !string.IsNullOrWhiteSpace(url) &&
+        (url.Contains("youtube.com", StringComparison.OrdinalIgnoreCase) ||
+         url.Contains("youtu.be", StringComparison.OrdinalIgnoreCase) ||
+         url.Contains("vimeo.com", StringComparison.OrdinalIgnoreCase) ||
+         url.Contains("player.vimeo", StringComparison.OrdinalIgnoreCase) ||
+         url.EndsWith(".mp4", StringComparison.OrdinalIgnoreCase) ||
+         url.EndsWith(".webm", StringComparison.OrdinalIgnoreCase) ||
+         url.Contains(".mp4", StringComparison.OrdinalIgnoreCase));
 
     private static string SteamCover(string appId, string file) =>
         $"https://cdn.cloudflare.steamstatic.com/steam/apps/{appId}/{file}";
@@ -326,6 +419,34 @@ public static class DbSeeder
             "OS: Windows 10 64-bit - CPU: i5-3570K - RAM: 16GB - GPU: GTX 1050 - 40GB.",
             new[] { "Action", "Adventure", "Simulation" },
             new[] { "PC", "Xbox One", "Xbox Series X" },
-            new[] { "Pocketpair" }, new[] { "Pocketpair" })
+            new[] { "Pocketpair" }, new[] { "Pocketpair" }),
+
+        new("Red Dead Redemption 2", "1174180", 59.99m, 29.99m, 2019, 12, 5, 4.8f, 824310, 32000000,
+            "Phiêu lưu miền Viễn Tây tuyệt đẹp của Rockstar. Arthur Morgan và băng đảng Van der Linde bị săn đuổi trong thời đại nước Mỹ đang hiện đại hóa - câu chuyện sử thi về lòng trung thành, tự do và số phận.",
+            "OS: Windows 10 - CPU: i7-4770K - RAM: 8GB - GPU: GTX 1060 6GB - 150GB.",
+            new[] { "Action", "Adventure" },
+            new[] { "PC", "PlayStation 4", "PlayStation 5", "Xbox One", "Xbox Series X" },
+            new[] { "Rockstar Studios" }, new[] { "Rockstar Games" }),
+
+        new("Grand Theft Auto V", "271590", 29.99m, 14.99m, 2015, 4, 14, 4.7f, 1180420, 60000000,
+            "Ba nhân vật với ba số phận đan xen tại Los Santos. Cướp, lái xe, đầu tư và gây hỗn loạn trong thế giới mở lớn nhất series GTA, kèm chế độ trực tuyến GTA Online.",
+            "OS: Windows 8 64-bit - CPU: i5 3470 - RAM: 8GB - GPU: GTX 660 2GB - 90GB.",
+            new[] { "Action", "Adventure" },
+            new[] { "PC", "PlayStation 4", "PlayStation 5", "Xbox One", "Xbox Series X" },
+            new[] { "Rockstar North" }, new[] { "Rockstar Games" }),
+
+        new("Black Myth: Wukong", "2358720", 59.99m, null, 2024, 8, 20, 4.9f, 512340, 20000000,
+            "Hành động nhập vai dựa theo truyện Tây Du Ký. Vào vai Thích Ca Hành Giả chiến đấu bằng thiết bảng qua 6 chương đầy thử thách, với hiệu ứng Unreal Engine 5 ấn tượng và hệ thống chiến đấu nhịp độ cao.",
+            "OS: Windows 10 64-bit - CPU: i5-8400 - RAM: 16GB - GPU: RTX 2060 - 130GB SSD.",
+            new[] { "Action", "RPG" },
+            new[] { "PC", "PlayStation 5", "Xbox Series X" },
+            new[] { "Game Science" }, new[] { "Game Science" }),
+
+        new("Counter-Strike 2", "730", 0.00m, null, 2023, 9, 27, 4.4f, 2500000, 500000,
+            "Phiên bản kế thừa của Counter-Strike, dựng lại hoàn toàn trên Source 2. Hệ thống khói vật lý, kiến trúc map nâng cấp và chế độ đấu xếp hạng Premier. Miễn phí để chơi, cạnh tranh cùng hàng triệu game thủ.",
+            "OS: Windows 10 - CPU: 4 nhân 3.2GHz - RAM: 8GB - GPU: GTX 1050 Ti - 80GB (free to play).",
+            new[] { "Action", "Shooter" },
+            new[] { "PC" },
+            new[] { "Valve" }, new[] { "Valve" })
     };
 }
