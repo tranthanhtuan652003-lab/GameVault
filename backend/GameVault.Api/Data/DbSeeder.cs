@@ -400,7 +400,7 @@ public static class DbSeeder
             new[] { "PC", "PlayStation 4", "PlayStation 5", "Xbox One", "Xbox Series X", "Nintendo Switch" },
             new[] { "EA Vancouver" }, new[] { "Electronic Arts" }),
 
-        new("NBA 2K25", "2872900", 69.99m, 41.99m, 2024, 9, 6, 3.4f, 60200, 2500000,
+        new("NBA 2K25", "3020510", 69.99m, 41.99m, 2024, 9, 6, 3.4f, 60200, 2500000,
             "Tựa game bóng rổ mô phỏng mới nhất. Điều khiển các ngôi sao NBA, chinh chiến trong MyCareer, xây dựng đội hình MyTeam và tranh tài online.",
             "OS: Windows 10 64-bit - CPU: i5-4690K - RAM: 8GB - GPU: GTX 960 2GB - 110GB.",
             new[] { "Sports", "Simulation" },
