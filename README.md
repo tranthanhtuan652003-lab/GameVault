@@ -1,6 +1,6 @@
 # GameVault 🎮
 
-**GameVault** là một website bán game hoàn chỉnh (Full-Stack) — đồ án cuối kỳ môn **Lập trình Web**. Hệ thống bao gồm một **REST API** viết bằng ASP.NET Core và một **client** Next.js, đủ các chức năng của một cửa hàng game thực tế: duyệt & tìm kiếm game, giỏ hàng, thanh toán tạo đơn hàng, đánh giá, wishlist, quản trị viên, upload avatar...
+**GameVault** là một website bán game hoàn chỉnh (Full-Stack) — đồ án cuối kỳ môn **Lập Trình Front-End**. Hệ thống bao gồm một **REST API** viết bằng ASP.NET Core và một **client** Next.js, đủ các chức năng của một cửa hàng game thực tế: duyệt & tìm kiếm game, giỏ hàng, thanh toán tạo đơn hàng, đánh giá, wishlist, quản trị viên, upload avatar...
 
 ---
 
@@ -266,4 +266,4 @@ npm run test:watch  # chạy watch mode
 
 ## 📝 Tác giả
 
-Đồ án cuối kỳ môn **Lập trình Web** — sinh viên tại FPT. Vui lòng không sao chép trực tiếp cho mục đích nộp bài.
+Đồ án cuối kỳ môn **Lập Trình Front-End** — sinh viên tại Trường Đại học Lạc Hồng. Vui lòng không sao chép trực tiếp cho mục đích nộp bài.
