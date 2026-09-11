@@ -13,7 +13,7 @@ var builder = WebApplication.CreateBuilder(args);
 
 // DbContext
 builder.Services.AddDbContext<GameVaultDbContext>(options =>
-    options.UseSqlServer(builder.Configuration.GetConnectionString("DefaultConnection")));
+    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
 
 // Services (DI)
 builder.Services.AddScoped<IAuthService, AuthService>();
@@ -94,8 +94,14 @@ builder.Services.AddRateLimiter(options =>
             }));
 });
 
-// CORS
-var origins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? new[] { "http://localhost:3000" };
+// CORS – allow override via CORS_ALLOWED_ORIGINS env (comma-separated).
+var originsEnv = builder.Configuration["CORS_ALLOWED_ORIGINS"];
+string[] origins;
+if (!string.IsNullOrWhiteSpace(originsEnv))
+    origins = originsEnv.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
+else
+    origins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? new[] { "http://localhost:3000" };
+
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("GameVaultCors", policy =>
