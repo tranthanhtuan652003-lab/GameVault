@@ -70,6 +70,25 @@ Swagger UI (tự đăng nhập admin): `http://localhost:5080/swagger`
 | GET    | `/`               | Danh sách đơn của user   |
 | GET    | `/{orderId}`      | Chi tiết đơn hàng        |
 
+`PaymentMethod` hợp lệ: `Demo` (thanh toán ngay), `BankTransfer` (chờ xác nhận), `MoMo` (redirect Ví MoMo).
+
+---
+
+## Payment — `/api/Payment` (JWT, trừ IPN)
+
+| Method | Endpoint                        | Auth | Mô tả                                 |
+|--------|---------------------------------|------|---------------------------------------|
+| GET    | `/bank-transfer/{orderId}`      | JWT  | Lấy thông tin tài khoản nhận + QR     |
+| GET    | `/bank-transfer/status/{orderId}`| JWT | Kiểm tra trạng thái chuyển khoản      |
+| GET    | `/momo/payment-url?orderId=`    | JWT  | Tạo URL thanh toán MoMo               |
+| GET    | `/momo/return`                  | —    | Nhận callback MoMo (frontend redirect)|
+| GET/POST| `/momo-ipn`                    | —    | Webhook MoMo xác nhận giao dịch       |
+
+Admin xác nhận chuyển khoản:
+| Method | Endpoint                               | Auth  | Mô tả                       |
+|--------|---------------------------------------|-------|-----------------------------|
+| POST   | `/api/Admin/orders/{id}/confirm-bank-transfer` | Admin | Xác nhận đã nhận tiền    |
+
 ---
 
 ## Reviews — `/api/games/{gameId}/Review` (public list, JWT post)

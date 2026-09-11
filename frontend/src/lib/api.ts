@@ -1,5 +1,6 @@
 import type {
   ApiResponse,
+  BankTransferInfoDto,
   CartDto,
   DashboardDto,
   GameCreateRequest,
@@ -115,6 +116,17 @@ function buildQuery(params: GameListParams): Record<string, string | number | un
     sort: params.sort,
     minRating: params.minRating,
   };
+}
+
+function toQueryString(query: Record<string, string>): string {
+  const params = new URLSearchParams();
+  for (const [key, value] of Object.entries(query)) {
+    if (value !== undefined && value !== "") {
+      params.append(key, value);
+    }
+  }
+  const qs = params.toString();
+  return qs ? `?${qs}` : "";
 }
 
 export const api = {
@@ -254,6 +266,37 @@ export const api = {
       request<OrderDto>(`/api/Orders/${id}`, { token }),
   },
 
+  payment: {
+    bankTransferInfo: (orderId: number, token: string) =>
+      request<BankTransferInfoDto>(`/api/Payment/bank-transfer/${orderId}`, { token }),
+    bankTransferStatus: (orderId: number, token: string) =>
+      request<{ status: string; paidAt: boolean }>(
+        `/api/Payment/bank-transfer/status/${orderId}`,
+        { token }
+      ),
+    momoPaymentUrl: (orderId: number, token: string) =>
+      request<{ paymentUrl: string | null; simulate: boolean }>(
+        `/api/Payment/momo/payment-url`,
+        { query: { orderId }, token }
+      ),
+    momoSimulateConfirm: (orderId: number, token: string) =>
+      request<null>(`/api/Payment/momo/simulate/confirm/${orderId}`, {
+        method: "POST",
+        token,
+      }),
+    momoReturn: (query: Record<string, string>) =>
+      request<{
+        success: boolean;
+        orderId: number;
+        transId: string;
+        requestId: string;
+        resultCode: string;
+        payType: string;
+        message: string;
+        amount: number;
+      }>(`/api/Payment/momo/return${toQueryString(query)}`),
+  },
+
   // Admin
   admin: {
     dashboard: (token: string) =>
@@ -276,6 +319,11 @@ export const api = {
       request<null>(`/api/Admin/orders/${id}/status`, {
         method: "PUT",
         body: { status },
+        token,
+      }),
+    confirmBankTransfer: (id: number, token: string) =>
+      request<null>(`/api/Admin/orders/${id}/confirm-bank-transfer`, {
+        method: "POST",
         token,
       }),
     developers: (token: string) =>

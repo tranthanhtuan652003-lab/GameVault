@@ -11,6 +11,7 @@ public interface IOrderService
     Task<List<OrderDto>> GetUserOrdersAsync(int userId);
     Task<OrderDto?> GetOrderAsync(int userId, int orderId, bool isAdmin = false);
     Task<(bool Success, string? Error)> UpdateStatusAsync(int orderId, string status);
+    Task<(bool Success, string? Error)> ConfirmBankTransferAsync(int orderId, int userId);
 }
 
 public class OrderService : IOrderService
@@ -73,6 +74,30 @@ public class OrderService : IOrderService
             CreatedAt = DateTime.UtcNow
         };
 
+        // Xác định trạng thái thanh toán dựa trên phương thức
+        var paymentMethod = request.PaymentMethod ?? "Demo";
+        var paymentStatus = "Paid"; // Demo, CreditCard, Wallet thanh toán ngay
+        var transactionId = "DEMO-" + Guid.NewGuid().ToString("N")[..12].ToUpper();
+        var paidAt = DateTime.UtcNow;
+
+        if (paymentMethod == "BankTransfer")
+        {
+            // Chuyển khoản thủ công: chờ admin xác nhận
+            paymentStatus = "Pending";
+            transactionId = "BANK-" + Guid.NewGuid().ToString("N")[..12].ToUpper();
+            order.Status = "Pending";
+            order.PaymentStatus = "Pending";
+            paidAt = default;
+        }
+        else if (paymentMethod == "MoMo")
+        {
+            // MoMo: chờ callback từ cổng thanh toán
+            paymentStatus = "Pending";
+            transactionId = "MOMO-" + Guid.NewGuid().ToString("N")[..12].ToUpper();
+            order.PaymentStatus = "Pending";
+            paidAt = default;
+        }
+
         foreach (var item in cart.Items)
         {
             order.OrderDetails.Add(new OrderDetail
@@ -95,11 +120,11 @@ public class OrderService : IOrderService
         {
             Order = order,
             UserId = userId,
-            Method = request.PaymentMethod,
+            Method = paymentMethod,
             Amount = total,
-            Status = "Paid",
-            TransactionId = "DEMO-" + Guid.NewGuid().ToString("N")[..12].ToUpper(),
-            PaidAt = DateTime.UtcNow
+            Status = paymentStatus,
+            TransactionId = transactionId,
+            PaidAt = paidAt == default ? DateTime.UtcNow : paidAt
         };
 
         // Xóa giỏ hàng sau khi tạo đơn
@@ -154,6 +179,27 @@ public class OrderService : IOrderService
         return (true, null);
     }
 
+    public async Task<(bool Success, string? Error)> ConfirmBankTransferAsync(int orderId, int userId)
+    {
+        var order = await _db.Orders
+            .Include(o => o.Payments)
+            .FirstOrDefaultAsync(o => o.Id == orderId && o.UserId == userId);
+
+        if (order == null) return (false, "Không tìm thấy đơn hàng.");
+
+        var payment = order.Payments.FirstOrDefault(p => p.Method == "BankTransfer");
+        if (payment == null) return (false, "Đơn hàng không phải phương thức chuyển khoản.");
+
+        payment.Status = "Paid";
+        payment.PaidAt = DateTime.UtcNow;
+        order.PaymentStatus = "Paid";
+        order.PaidAt = DateTime.UtcNow;
+        order.Status = "Processing";
+
+        await _db.SaveChangesAsync();
+        return (true, null);
+    }
+
     private static string GenerateOrderNumber()
     {
         var ts = DateTime.UtcNow.ToString("yyyyMMddHHmmssfff");
@@ -163,30 +209,37 @@ public class OrderService : IOrderService
 
     public static OrderDto ToDtoPublic(Order o) => ToDto(o);
 
-    private static OrderDto ToDto(Order o) => new()
+    private static OrderDto ToDto(Order o)
     {
-        Id = o.Id,
-        OrderNumber = o.OrderNumber,
-        CustomerName = o.CustomerName,
-        Email = o.Email,
-        Phone = o.Phone,
-        Address = o.Address,
-        Subtotal = o.Subtotal,
-        Discount = o.Discount,
-        Total = o.Total,
-        Status = o.Status,
-        CreatedAt = o.CreatedAt,
-        PaymentMethod = o.Payments.FirstOrDefault()?.Method ?? "Demo",
-        Items = o.OrderDetails.Select(d => new OrderItemDto
+        var payment = o.Payments.FirstOrDefault();
+        return new OrderDto
         {
-            GameId = d.GameId,
-            GameTitle = d.GameTitle,
-            GameSlug = d.Slug,
-            CoverImage = d.CoverImage,
-            Quantity = d.Quantity,
-            UnitPrice = d.UnitPrice,
-            Discount = d.Discount,
-            LineTotal = d.LineTotal
-        }).ToList()
-    };
+            Id = o.Id,
+            OrderNumber = o.OrderNumber,
+            CustomerName = o.CustomerName,
+            Email = o.Email,
+            Phone = o.Phone,
+            Address = o.Address,
+            Subtotal = o.Subtotal,
+            Discount = o.Discount,
+            Total = o.Total,
+            Status = o.Status,
+            CreatedAt = o.CreatedAt,
+            PaymentMethod = payment?.Method ?? "Demo",
+            PaymentStatus = o.PaymentStatus,
+            PaidAt = o.PaidAt,
+            TransactionId = payment?.TransactionId,
+            Items = o.OrderDetails.Select(d => new OrderItemDto
+            {
+                GameId = d.GameId,
+                GameTitle = d.GameTitle,
+                GameSlug = d.Slug,
+                CoverImage = d.CoverImage,
+                Quantity = d.Quantity,
+                UnitPrice = d.UnitPrice,
+                Discount = d.Discount,
+                LineTotal = d.LineTotal
+            }).ToList()
+        };
+    }
 }

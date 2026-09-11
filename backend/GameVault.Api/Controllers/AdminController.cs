@@ -67,6 +67,14 @@ public class AdminController : ControllerBase
         return Ok(Res.Ok("Cập nhật trạng thái đơn hàng thành công"));
     }
 
+    [HttpPost("orders/{id:int}/confirm-bank-transfer")]
+    public async Task<IActionResult> ConfirmBankTransfer(int id)
+    {
+        var result = await _admin.ConfirmBankTransferAsync(id);
+        if (!result.Success) return BadRequest(Res.Fail(result.Error!));
+        return Ok(Res.Ok("Xác nhận thanh toán chuyển khoản thành công"));
+    }
+
     [HttpGet("reviews")]
     public async Task<IActionResult> Reviews([FromQuery] int page = 1, [FromQuery] int pageSize = 20) =>
         Ok(Res.Ok("Danh sách đánh giá", await _admin.GetAllReviewsAsync(page, pageSize)));

@@ -144,6 +144,22 @@ export interface OrderDto {
   createdAt: string;
   paymentMethod: string;
   items: OrderItemDto[];
+  paymentStatus: string;
+  paidAt: string | null;
+  transactionId?: string | null;
+}
+
+export interface BankTransferInfoDto {
+  orderId: number;
+  orderNumber: string;
+  amount: number;
+  bankName: string;
+  bankAccountNumber: string;
+  bankAccountHolder: string;
+  bankBranch: string;
+  transferContent: string;
+  qrCodeUrl: string;
+  status: string;
 }
 
 export interface ReviewDto {

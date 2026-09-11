@@ -50,6 +50,15 @@ const statusConfig: Record<
   },
 };
 
+const paymentStatusConfig: Record<
+  string,
+  { label: string; className: string }
+> = {
+  Paid: { label: "Đã thanh toán", className: "bg-accent/15 text-accent" },
+  Pending: { label: "Chờ thanh toán", className: "bg-amber-500/15 text-amber-400" },
+  Failed: { label: "Thất bại", className: "bg-danger/15 text-danger" },
+};
+
 export default function AccountPage() {
   const { isAuthenticated, user, token, logout, refreshUser } = useAuth();
   const { toast } = useToast();
@@ -297,6 +306,7 @@ function OrdersTab({ orders, loading }: { orders: OrderDto[]; loading: boolean }
     <div className="space-y-4">
       {orders.map((order) => {
         const st = statusConfig[order.status] ?? statusConfig.Pending;
+        const pst = paymentStatusConfig[order.paymentStatus] ?? paymentStatusConfig.Pending;
         return (
           <div key={order.id} className="rounded-2xl border border-edge bg-surface p-5">
             <div className="flex flex-wrap items-center justify-between gap-3">
@@ -308,15 +318,25 @@ function OrdersTab({ orders, loading }: { orders: OrderDto[]; loading: boolean }
                   {formatDateTime(order.createdAt)}
                 </p>
               </div>
-              <span
-                className={cn(
-                  "flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold",
-                  st.className
-                )}
-              >
-                {st.icon}
-                {st.label}
-              </span>
+              <div className="flex flex-wrap items-center gap-2">
+                <span
+                  className={cn(
+                    "flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold",
+                    pst.className
+                  )}
+                >
+                  {pst.label}
+                </span>
+                <span
+                  className={cn(
+                    "flex items-center gap-1.5 rounded-full px-2.5 py-1 text-xs font-semibold",
+                    st.className
+                  )}
+                >
+                  {st.icon}
+                  {st.label}
+                </span>
+              </div>
             </div>
             <div className="mt-4 flex items-center gap-2 overflow-x-auto no-scrollbar pb-1">
               {order.items.slice(0, 5).map((item) => (

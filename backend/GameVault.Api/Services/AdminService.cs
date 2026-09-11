@@ -13,6 +13,7 @@ public interface IAdminService
     Task<(bool Success, string? Error)> UpdateUserRoleAsync(int userId, string roleName);
     Task<List<OrderDto>> GetAllOrdersAsync();
     Task<(bool Success, string? Error)> UpdateOrderStatusAsync(int orderId, string status);
+    Task<(bool Success, string? Error)> ConfirmBankTransferAsync(int orderId);
     Task<PagedResult<ReviewDto>> GetAllReviewsAsync(int page, int pageSize);
     Task<List<DeveloperDto>> GetDevelopersAsync();
     Task<List<PublisherDto>> GetPublishersAsync();
@@ -164,6 +165,27 @@ public class AdminService : IAdminService
         var valid = new[] { "Pending", "Processing", "Completed", "Cancelled" };
         if (!valid.Contains(status)) return (false, "Trạng thái không hợp lệ.");
         order.Status = status;
+        await _db.SaveChangesAsync();
+        return (true, null);
+    }
+
+    public async Task<(bool Success, string? Error)> ConfirmBankTransferAsync(int orderId)
+    {
+        var order = await _db.Orders
+            .Include(o => o.Payments)
+            .FirstOrDefaultAsync(o => o.Id == orderId);
+
+        if (order == null) return (false, "Không tìm thấy đơn hàng.");
+
+        var payment = order.Payments.FirstOrDefault(p => p.Method == "BankTransfer");
+        if (payment == null) return (false, "Đơn hàng không phải thanh toán chuyển khoản.");
+
+        payment.Status = "Paid";
+        payment.PaidAt = DateTime.UtcNow;
+        order.PaymentStatus = "Paid";
+        order.PaidAt = DateTime.UtcNow;
+        order.Status = "Processing";
+
         await _db.SaveChangesAsync();
         return (true, null);
     }

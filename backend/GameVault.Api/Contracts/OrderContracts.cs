@@ -42,4 +42,7 @@ public class OrderDto
     public DateTime CreatedAt { get; set; }
     public string PaymentMethod { get; set; } = string.Empty;
     public List<OrderItemDto> Items { get; set; } = new();
+    public string PaymentStatus { get; set; } = string.Empty;
+    public DateTime? PaidAt { get; set; }
+    public string? TransactionId { get; set; }
 }

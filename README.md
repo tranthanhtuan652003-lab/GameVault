@@ -12,6 +12,7 @@
 - **Chi tiết game** đầy đủ thông tin, ảnh, đánh giá, xếp hạng sao.
 - **Giỏ hàng** thêm/xoá/cập nhật số lượng, tính tổng tự động.
 - **Thanh toán** tạo đơn hàng, khoá giá & khoá số lượng tại thời điểm order.
+- **3 phương thức thanh toán**: `Demo` (mô phỏng ngay), `BankTransfer` (chuyển khoản ngân hàng kèm QR code, admin xác nhận), `MoMo` (redirect Ví MoMo, webhook tự xác nhận).
 - **Wishlist** lưu game yêu thích (danh bạ riêng cho từng user).
 - **Đăng ký / Đăng nhập / Đổi mật khẩu / Cập nhật hồ sơ / Upload avatar.**
 - **Viết và quản lý review** sau khi đã mua game.

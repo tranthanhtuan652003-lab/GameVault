@@ -16,8 +16,10 @@ public class Order
     public decimal Discount { get; set; }
     public decimal Total { get; set; }
 
-    public string Status { get; set; } = "Pending";
+    public string Status { get; set; } = "Pending";           // Pending | Processing | Completed | Cancelled
+    public string PaymentStatus { get; set; } = "Paid";       // Paid | Pending | Failed
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
+    public DateTime? PaidAt { get; set; }
 
     public ICollection<OrderDetail> OrderDetails { get; set; } = new List<OrderDetail>();
     public ICollection<Payment> Payments { get; set; } = new List<Payment>();

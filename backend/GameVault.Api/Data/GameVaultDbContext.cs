@@ -252,6 +252,7 @@ public class GameVaultDbContext : DbContext
             e.Property(o => o.Discount).HasPrecision(18, 2).IsRequired();
             e.Property(o => o.Total).HasPrecision(18, 2).IsRequired();
             e.Property(o => o.Status).HasMaxLength(30).IsRequired();
+            e.Property(o => o.PaymentStatus).HasMaxLength(30).IsRequired();
             e.HasIndex(o => o.OrderNumber).IsUnique();
             e.HasIndex(o => o.Status);
             e.HasIndex(o => o.CreatedAt);
@@ -283,6 +284,14 @@ public class GameVaultDbContext : DbContext
             e.Property(p => p.Amount).HasPrecision(18, 2).IsRequired();
             e.Property(p => p.Status).HasMaxLength(30).IsRequired();
             e.Property(p => p.TransactionId).HasMaxLength(100).IsRequired();
+            e.Property(p => p.BankName).HasMaxLength(100);
+            e.Property(p => p.BankAccountNumber).HasMaxLength(50);
+            e.Property(p => p.BankAccountHolder).HasMaxLength(200);
+            e.Property(p => p.TransferContent).HasMaxLength(300);
+            e.Property(p => p.MoMoTransId).HasMaxLength(100);
+            e.Property(p => p.MoMoResultCode).HasMaxLength(10);
+            e.Property(p => p.MoMoPayType).HasMaxLength(50);
+            e.Property(p => p.MoMoRequestId).HasMaxLength(100);
 
             e.HasOne(p => p.Order).WithMany(o => o.Payments).HasForeignKey(p => p.OrderId).OnDelete(DeleteBehavior.Cascade);
             e.HasOne(p => p.User).WithMany(u => u.Payments).HasForeignKey(p => p.UserId).OnDelete(DeleteBehavior.Restrict);

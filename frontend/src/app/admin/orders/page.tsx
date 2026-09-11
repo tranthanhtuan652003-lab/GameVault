@@ -8,6 +8,7 @@ import { ApiError } from "@/lib/api";
 import { formatPrice, formatDateTime } from "@/lib/format";
 import type { OrderDto } from "@/lib/types";
 import { cn } from "@/lib/cn";
+import { CheckCircle } from "@phosphor-icons/react";
 
 const statuses = ["Pending", "Processing", "Completed", "Cancelled"];
 const statusLabel: Record<string, string> = {
@@ -21,6 +22,13 @@ const statusClass: Record<string, string> = {
   Processing: "bg-sky-500/15 text-sky-400",
   Completed: "bg-accent/15 text-accent",
   Cancelled: "bg-danger/15 text-danger",
+};
+const paymentMethodLabel: Record<string, string> = {
+  Demo: "Demo",
+  BankTransfer: "Chuyển khoản",
+  MoMo: "MoMo",
+  CreditCard: "Thẻ tín dụng",
+  Wallet: "Ví điện tử",
 };
 
 export default function AdminOrdersPage() {
@@ -50,6 +58,23 @@ export default function AdminOrdersPage() {
     }
   };
 
+  const confirmBankTransfer = async (id: number) => {
+    if (!token) return;
+    try {
+      await api.admin.confirmBankTransfer(id, token);
+      setOrders((list) =>
+        list.map((o) =>
+          o.id === id
+            ? { ...o, paymentStatus: "Paid", status: "Processing" }
+            : o
+        )
+      );
+      toast("Đã xác nhận thanh toán chuyển khoản");
+    } catch (err) {
+      toast(err instanceof ApiError ? err.message : "Có lỗi xảy ra", "error");
+    }
+  };
+
   return (
     <div className="p-6">
       <div className="mb-6">
@@ -74,6 +99,7 @@ export default function AdminOrdersPage() {
                 <th className="p-4 font-medium">Khách hàng</th>
                 <th className="p-4 font-medium">Ngày</th>
                 <th className="p-4 font-medium">Sản phẩm</th>
+                <th className="p-4 font-medium">Thanh toán</th>
                 <th className="p-4 font-medium">Tổng</th>
                 <th className="p-4 font-medium">Trạng thái</th>
               </tr>
@@ -89,6 +115,23 @@ export default function AdminOrdersPage() {
                   <td className="p-4 text-ink-soft">{formatDateTime(o.createdAt)}</td>
                   <td className="p-4 text-ink-soft">
                     {o.items.reduce((a, i) => a + i.quantity, 0)}
+                  </td>
+                  <td className="p-4">
+                    <span className="inline-flex items-center gap-1.5 text-xs">
+                      <span className="rounded-full bg-surface-2 px-2.5 py-1 font-semibold text-ink-soft">
+                        {paymentMethodLabel[o.paymentMethod] ?? o.paymentMethod}
+                      </span>
+                      {o.paymentMethod === "BankTransfer" &&
+                        o.paymentStatus !== "Paid" && (
+                          <button
+                            onClick={() => confirmBankTransfer(o.id)}
+                            className="inline-flex items-center gap-1 rounded-full bg-accent/15 px-2.5 py-1 font-semibold text-accent transition hover:bg-accent/25"
+                          >
+                            <CheckCircle size={13} weight="fill" />
+                            Xác nhận
+                          </button>
+                        )}
+                    </span>
                   </td>
                   <td className="p-4 font-bold text-accent">{formatPrice(o.total)}</td>
                   <td className="p-4">
