@@ -1,6 +1,6 @@
 # GameVault 🎮
 
-**GameVault** là một website bán game hoàn chỉnh (Full-Stack) — đồ án cuối kỳ môn **Lập trình Web**. Hệ thống bao gồm một **REST API** viết bằng ASP.NET Core và một **client** Next.js, đủ các chức năng của một cửa hàng game thực tế: duyệt & tìm kiếm game, giỏ hàng, thanh toán tạo đơn hàng, đánh giá, wishlist, quản trị viên, upload avatar...
+**GameVault** là một website bán game hoàn chỉnh (Full-Stack) — đồ án cuối kỳ môn **Lập Trình Front-End**. Hệ thống bao gồm một **REST API** viết bằng ASP.NET Core và một **client** Next.js, đủ các chức năng của một cửa hàng game thực tế: duyệt & tìm kiếm game, giỏ hàng, thanh toán tạo đơn hàng, đánh giá, wishlist, quản trị viên, upload avatar...
 
 ---
 
@@ -60,7 +60,7 @@ GameVault/
 │     ├─ Models/             # 20 entity (POCO)
 │     ├─ Contracts/          # DTOs (request/response)
 │     ├─ Services/           # business logic + gọi RAWG external API
-│     ├─ Data/               # DbContext, DbSeeder (roles + admin)
+│     ├─ Data/               # DbContext, DbSeeder (roles + admin + 20 game Steam)
 │     ├─ Middlewares/        # ExceptionHandlingMiddleware
 │     ├─ Helpers/            # ApiResponse/Res (chuẩn format response)
 │     ├─ Migrations/         # EF Core migrations
@@ -107,7 +107,7 @@ dotnet run
 - API chạy tại `http://localhost:5080`.
 - Khi khởi động, backend **tự động**:
   1. **Migrate** database (tạo DB `GameVaultDB` nếu chưa có).
-  2. **Seed** dữ liệu nền tảng tối thiểu: 2 roles (`Admin`, `User`) và 1 tài khoản admin (nếu chưa tồn tại).
+  2. **Seed** dữ liệu nền tảng (idempotent — không chèn trùng): 2 roles (`Admin`, `User`), 1 tài khoản admin và **20 game Steam phổ biến** (kèm thể loại, nền tảng, dev/publisher, ảnh bìa, gallery, trailer) nếu chưa tồn tại.
 - **Swagger** (chỉ ở Development): `http://localhost:5080/swagger` — có nút Authorize để dán JWT token (chỉ dán chuỗi token, không cần thêm tiền tố `Bearer `).
 
 > 🛑 **Dừng backend sạch sẽ:** `powershell -File ../stop-backend.ps1` (kill instance và giải phóng port 5080).
@@ -159,7 +159,7 @@ npm run start    # mặc định chạy ở http://localhost:3000
 |-------|----------|-------------|----------------------------------|
 | Admin | `admin`  | `Admin@123` | Không thể bị auto-seed chồng     |
 
-Seeder **không** còn tạo dữ liệu game/review/order mẫu — database khởi đầu chỉ có roles + 1 admin, toàn bộ dữ liệu còn lại do người dùng tự tạo qua UI/API. Đây là thiết kế có chủ đích để database luôn sạch khi khởi động.
+Seeder tự tạo **20 game Steam phổ biến** (Elden Ring, Cyberpunk 2077, Baldur's Gate 3, ...) khi khởi động để cửa hàng có dữ liệu xem ngay. Mỗi game đi kèm thể loại/nền tảng/dev/publisher, ảnh bìa + gallery (Steam CDN), và nút **"Xem trailer"** mở tìm kiếm trailer chính thức trên YouTube. Không tạo user/review/order mẫu — chúng do người dùng tự tạo qua UI/API.
 
 ---
 
@@ -267,4 +267,4 @@ npm run test:watch  # chạy watch mode
 
 ## 📝 Tác giả
 
-Đồ án cuối kỳ môn **Lập trình Web** — sinh viên tại FPT. Vui lòng không sao chép trực tiếp cho mục đích nộp bài.
+Đồ án cuối kỳ môn **Lập Trình Front-End** — sinh viên tại Trường Đại học Lạc Hồng. Vui lòng không sao chép trực tiếp cho mục đích nộp bài.

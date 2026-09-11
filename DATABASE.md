@@ -60,8 +60,8 @@
 
 ## Seed dữ liệu mặc định
 
-Khi khởi động, seeder tạo:
-- 3 roles: `Admin`, `Staff`, `User`
-- 10 users (admin: `admin` / `Admin@123`)
-- 30 games, 8 genres, 6 platforms, 10 developers, 10 publishers
-- 20 reviews, 10 orders
+Khi khởi động, seeder tạo (idempotent):
+- 2 roles: `Admin`, `User`
+- 1 tài khoản admin: `admin` / `Admin@123` (mật khẩu đổi được qua env `GAMEVAULT_ADMIN_PASSWORD`)
+- **20 game Steam phổ biến** kèm thể loại, nền tảng, developer, publisher, ảnh bìa/gallery (Steam CDN) và link trailer nếu chưa tồn tại
+- Không tạo user/review/order mẫu
