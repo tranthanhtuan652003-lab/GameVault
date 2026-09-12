@@ -11,9 +11,17 @@ using Microsoft.IdentityModel.Tokens;
 using Microsoft.OpenApi.Models;
 var builder = WebApplication.CreateBuilder(args);
 
-// DbContext
+// DbContext – chuẩn hoá connection string: chấp nhận cả dạng Neon URL
+// (postgresql://...) và dạng key=value Npgsql chuẩn.
+var connStr = builder.Configuration.GetConnectionString("DefaultConnection") ?? "";
+if (connStr.StartsWith("postgresql://", StringComparison.OrdinalIgnoreCase) ||
+    connStr.StartsWith("postgres://", StringComparison.OrdinalIgnoreCase))
+{
+    connStr = ToNpgsqlConnectionString(connStr);
+}
+
 builder.Services.AddDbContext<GameVaultDbContext>(options =>
-    options.UseNpgsql(builder.Configuration.GetConnectionString("DefaultConnection")));
+    options.UseNpgsql(connStr));
 
 // Services (DI)
 builder.Services.AddScoped<IAuthService, AuthService>();
@@ -182,3 +190,16 @@ app.UseAuthorization();
 app.MapControllers();
 
 app.Run();
+
+// Npgsql chỉ nhận chuỗi key=value, không nhận URL "postgresql://..." nên
+// phải tự chuyển đổi (Neon/Supabase đều cho URL dạng này).
+static string ToNpgsqlConnectionString(string uriStr)
+{
+    var uri = new Uri(uriStr);
+    var userInfo = uri.UserInfo.Split(':');
+    var username = Uri.UnescapeDataString(userInfo[0]);
+    var password = userInfo.Length > 1 ? Uri.UnescapeDataString(userInfo[1]) : string.Empty;
+    var port = uri.IsDefaultPort ? 5432 : uri.Port;
+    var db = Uri.UnescapeDataString(uri.AbsolutePath.TrimStart('/'));
+    return $"Host={uri.Host};Port={port};Database={db};Username={username};Password={password};SSL Mode=Require;Trust Server Certificate=true";
+}
