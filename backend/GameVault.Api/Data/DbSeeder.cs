@@ -117,7 +117,8 @@ public static class DbSeeder
             DiscountPrice = spec.DiscountPrice,
             Rating = spec.Rating,
             RatingCount = spec.RatingCount,
-            ReleaseDate = new DateTime(spec.ReleaseYear, spec.ReleaseMonth, spec.ReleaseDay),
+            ReleaseDate = DateTime.SpecifyKind(
+                new DateTime(spec.ReleaseYear, spec.ReleaseMonth, spec.ReleaseDay), DateTimeKind.Utc),
             CoverImage = SteamCover(spec.AppId, "header.jpg"),
             TrailerUrl = SteamTrailer(spec.Title),
             SystemRequirements = spec.SystemRequirements,
@@ -141,7 +142,8 @@ public static class DbSeeder
         game.DiscountPrice = spec.DiscountPrice;
         game.Rating = spec.Rating;
         game.RatingCount = spec.RatingCount;
-        game.ReleaseDate = new DateTime(spec.ReleaseYear, spec.ReleaseMonth, spec.ReleaseDay);
+        game.ReleaseDate = DateTime.SpecifyKind(
+            new DateTime(spec.ReleaseYear, spec.ReleaseMonth, spec.ReleaseDay), DateTimeKind.Utc);
         game.CoverImage = SteamCover(spec.AppId, "header.jpg");
         if (!IsUsableTrailer(game.TrailerUrl))
             game.TrailerUrl = SteamTrailer(spec.Title);

@@ -158,7 +158,16 @@ using (var scope = app.Services.CreateScope())
 {
     var db = scope.ServiceProvider.GetRequiredService<GameVaultDbContext>();
     db.Database.Migrate();
-    await DbSeeder.SeedAsync(app.Services);
+    try
+    {
+        await DbSeeder.SeedAsync(app.Services);
+    }
+    catch (Exception ex)
+    {
+        // Lỗi seed không được làm sập app: ghi log và vẫn phục vụ
+        // (dữ liệu game/thể loại có thể được thêm thủ công từ admin).
+        app.Logger.LogError(ex, "Seed dữ liệu mẫu thất bại: {Message}", ex.Message);
+    }
 }
 
 app.UseMiddleware<ExceptionHandlingMiddleware>();
