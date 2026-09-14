@@ -15,7 +15,8 @@ public class OrderServiceTests
         db.SeedGame("Hades", price: 24.99m);
 
         var cartSvc = new CartService(db.Db);
-        var orderSvc = new OrderService(db.Db);
+        var keySvc = new GameKeyService(db.Db);
+        var orderSvc = new OrderService(db.Db, keySvc);
 
         await cartSvc.AddItemAsync(user.Id, new AddCartItemRequest { GameId = 1, Quantity = 2 });
         await cartSvc.AddItemAsync(user.Id, new AddCartItemRequest { GameId = 2, Quantity = 1 });
@@ -76,7 +77,7 @@ public class OrderServiceTests
     {
         using var db = new TestDb();
         var user = db.SeedUser("player1");
-        var orderSvc = new OrderService(db.Db);
+        var orderSvc = new OrderService(db.Db, new GameKeyService(db.Db));
 
         var res = await orderSvc.CreateFromCartAsync(user.Id, NewOrder());
         Assert.False(res.Success);
@@ -95,7 +96,7 @@ public class OrderServiceTests
         db.Db.Games.Single().IsActive = false;
         db.Db.SaveChanges();
 
-        var orderSvc = new OrderService(db.Db);
+        var orderSvc = new OrderService(db.Db, new GameKeyService(db.Db));
         var res = await orderSvc.CreateFromCartAsync(user.Id, NewOrder());
         Assert.False(res.Success);
         Assert.Contains("không còn khả dụng", res.Error);
@@ -113,12 +114,58 @@ public class OrderServiceTests
         var cartSvc = new CartService(db.Db);
         await cartSvc.AddItemAsync(user.Id, new AddCartItemRequest { GameId = 1, Quantity = 1 });
 
-        var orderSvc = new OrderService(db.Db);
+        var orderSvc = new OrderService(db.Db, new GameKeyService(db.Db));
         var res = await orderSvc.CreateFromCartAsync(user.Id, NewOrder());
 
         Assert.True(res.Success, res.Error);
         var cart = await cartSvc.GetCartAsync(user.Id);
         Assert.Empty(cart.Items);
+    }
+
+    [Fact]
+    public async Task CreateOrder_DemoPayment_DeliversKeys()
+    {
+        using var db = new TestDb();
+        var fx = await BuildSimpleOrderAsync(db);
+
+        var res = await fx.OrderSvc.CreateFromCartAsync(fx.UserId, NewOrder());
+        Assert.True(res.Success, res.Error);
+        var order = res.Order!;
+        Assert.Equal("Paid", order.PaymentStatus);
+
+        // Mỗi OrderDetail phải nhận đúng Quantity key
+        var cyber = order.Items.Single(i => i.GameTitle == "Cyberpunk 2077");
+        var hades = order.Items.Single(i => i.GameTitle == "Hades");
+        Assert.Equal(2, cyber.Keys.Count);
+        Assert.Single(hades.Keys);
+        Assert.Distinct(cyber.Keys);
+        Assert.All(cyber.Keys, k => Assert.Contains("-", k));
+
+        // Trong DB: 2 key của Cyberpunk chuyển sang Sold, gắn OrderDetailId
+        var sold = db.Db.GameKeys.Count(k => k.GameId == 1 && k.Status == "Sold");
+        Assert.Equal(2, sold);
+        var avail = db.Db.GameKeys.Count(k => k.GameId == 1 && k.Status == "Available");
+        Assert.Equal(18, avail);
+    }
+
+    [Fact]
+    public async Task CreateOrder_InsufficientKeys_Fails()
+    {
+        using var db = new TestDb();
+        var user = db.SeedUser("player1");
+        var game = db.SeedGame("Fortnite", price: 10m);
+
+        // Thêm giỏ hàng 2 bản khi còn key, sau đó key bị bán hết còn 1
+        var cartSvc = new CartService(db.Db);
+        await cartSvc.AddItemAsync(user.Id, new AddCartItemRequest { GameId = game.Id, Quantity = 2 });
+
+        db.Db.GameKeys.RemoveRange(db.Db.GameKeys.Where(k => k.GameId == game.Id).Skip(1));
+        db.Db.SaveChanges();
+
+        var orderSvc = new OrderService(db.Db, new GameKeyService(db.Db));
+        var res = await orderSvc.CreateFromCartAsync(user.Id, NewOrder());
+        Assert.False(res.Success);
+        Assert.Contains("không đủ key", res.Error);
     }
 
     [Fact]

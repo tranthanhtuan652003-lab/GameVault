@@ -18,6 +18,8 @@ import type {
   PublisherDto,
   RegisterData,
   ReviewDto,
+  GameKeyDto,
+  ImportKeysResult,
 } from "./types";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5080";
@@ -255,7 +257,6 @@ export const api = {
         customerName: string;
         email: string;
         phone: string;
-        address: string;
         paymentMethod: string;
       },
       token: string
@@ -386,6 +387,31 @@ export const api = {
       request<PublisherDto>("/api/Admin/publishers", { method: "POST", body: { name }, token }),
     deletePublisher: (id: number, token: string) =>
       request<null>(`/api/Admin/publishers/${id}`, { method: "DELETE", token }),
+
+    gameKeys: {
+      list: (gameId: number | undefined, token: string) =>
+        request<GameKeyDto[]>("/api/Admin/game-keys", {
+          query: { gameId },
+          token,
+        }),
+      generate: (gameId: number, count: number, token: string) =>
+        request<GameKeyDto[]>("/api/Admin/game-keys/generate", {
+          method: "POST",
+          body: { gameId, count },
+          token,
+        }),
+      import: (gameId: number, keys: string[], token: string) =>
+        request<ImportKeysResult>("/api/Admin/game-keys/import", {
+          method: "POST",
+          body: { gameId, keys },
+          token,
+        }),
+      remove: (keyId: number, token: string) =>
+        request<null>(`/api/Admin/game-keys/${keyId}`, {
+          method: "DELETE",
+          token,
+        }),
+    },
   },
 };
 

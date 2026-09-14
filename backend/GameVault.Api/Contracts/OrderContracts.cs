@@ -12,6 +12,7 @@ public class OrderItemDto
     public decimal UnitPrice { get; set; }
     public decimal Discount { get; set; }
     public decimal LineTotal { get; set; }
+    public List<string> Keys { get; set; } = new();
 }
 
 public class CreateOrderRequest
@@ -22,7 +23,6 @@ public class CreateOrderRequest
     [EmailAddress(ErrorMessage = "Email không hợp lệ.")]
     public string Email { get; set; } = string.Empty;
     public string Phone { get; set; } = string.Empty;
-    [Required(AllowEmptyStrings = false, ErrorMessage = "Địa chỉ là bắt buộc.")]
     public string Address { get; set; } = string.Empty;
     public string PaymentMethod { get; set; } = "Demo";
 }

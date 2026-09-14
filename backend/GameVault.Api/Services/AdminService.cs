@@ -26,8 +26,13 @@ public interface IAdminService
 public class AdminService : IAdminService
 {
     private readonly GameVaultDbContext _db;
+    private readonly IOrderService _orders;
 
-    public AdminService(GameVaultDbContext db) => _db = db;
+    public AdminService(GameVaultDbContext db, IOrderService orders)
+    {
+        _db = db;
+        _orders = orders;
+    }
 
     public async Task<DashboardDto> GetDashboardAsync()
     {
@@ -151,7 +156,7 @@ public class AdminService : IAdminService
     {
         var orders = await _db.Orders
             .AsNoTracking()
-            .Include(o => o.OrderDetails)
+            .Include(o => o.OrderDetails).ThenInclude(d => d.GameKeys)
             .Include(o => o.Payments)
             .OrderByDescending(o => o.CreatedAt)
             .ToListAsync();
@@ -186,7 +191,9 @@ public class AdminService : IAdminService
         order.PaidAt = DateTime.UtcNow;
         order.Status = "Processing";
 
-        await _db.SaveChangesAsync();
+        var (deliverOk, deliverErr) = await _orders.DeliverKeysForPaidOrderAsync(orderId);
+        if (!deliverOk) return (false, deliverErr);
+
         return (true, null);
     }
 

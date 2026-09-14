@@ -13,6 +13,7 @@ public class CartItemDto
     public decimal UnitPrice { get; set; }
     public decimal? DiscountPrice { get; set; }
     public decimal LineTotal { get; set; }
+    public int AvailableKeys { get; set; }
 }
 
 public class CartDto

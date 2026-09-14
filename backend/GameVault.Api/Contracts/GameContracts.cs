@@ -18,6 +18,7 @@ public class GameDto
     public string SystemRequirements { get; set; } = string.Empty;
     public bool IsActive { get; set; }
     public int SalesCount { get; set; }
+    public int AvailableKeys { get; set; }
 
     public decimal FinalPrice => DiscountPrice ?? Price;
     public decimal DiscountPercent =>

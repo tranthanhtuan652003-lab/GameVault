@@ -100,6 +100,34 @@ public static class DbSeeder
         }
 
         await db.SaveChangesAsync();
+        await SeedGameKeysAsync(db);
+    }
+
+    private static async Task SeedGameKeysAsync(GameVaultDbContext db)
+    {
+        const int keysPerGame = 10;
+        var games = await db.Games.Include(g => g.GameKeys).ToListAsync();
+
+        foreach (var game in games)
+        {
+            if (game.GameKeys.Count > 0) continue;
+
+            var existing = await db.GameKeys.Where(k => k.GameId == game.Id)
+                .Select(k => k.Key).ToHashSetAsync();
+            var keys = new List<GameKey>();
+            while (keys.Count < keysPerGame)
+            {
+                var key = GameVault.Api.Services.GameKeyService.GenerateKeyText();
+                if (!existing.Contains(key) && keys.All(k => k.Key != key))
+                {
+                    existing.Add(key);
+                    keys.Add(new GameKey { GameId = game.Id, Key = key, Status = "Available", CreatedAt = DateTime.UtcNow });
+                }
+            }
+            db.GameKeys.AddRange(keys);
+        }
+
+        await db.SaveChangesAsync();
     }
 
     private static void BuildSteamGame(GameVaultDbContext db, SteamSeedSpec spec,

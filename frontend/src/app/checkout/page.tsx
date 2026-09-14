@@ -29,7 +29,6 @@ export default function CheckoutPage() {
   const [customerName, setCustomerName] = useState(user?.fullName ?? "");
   const [email, setEmail] = useState(user?.email ?? "");
   const [phone, setPhone] = useState("");
-  const [address, setAddress] = useState("");
   const [paymentMethod, setPaymentMethod] = useState("Demo");
   const [submitting, setSubmitting] = useState(false);
   const [order, setOrder] = useState<OrderDto | null>(null);
@@ -75,6 +74,12 @@ export default function CheckoutPage() {
           Đơn hàng <span className="font-mono font-semibold text-ink">{order.orderNumber}</span>{" "}
           đã được tạo. Tổng {formatPrice(order.total)}.
         </p>
+        <p className="mt-2 flex items-center justify-center gap-1.5 text-sm text-ink-soft">
+          <CheckCircle size={16} weight="fill" className="text-accent" />
+          Key kích hoạt Steam (
+          {order.items.reduce((a, i) => a + i.keys.length, 0)} key) đã sẵn sàng trong
+          đơn hàng của bạn.
+        </p>
         <div className="mt-8 flex flex-col gap-3 sm:flex-row">
           <Button onClick={() => router.push("/account")}>Xem đơn hàng</Button>
           <Button variant="outline" onClick={() => router.push("/games")}>
@@ -91,7 +96,7 @@ export default function CheckoutPage() {
     setSubmitting(true);
     try {
       const created = await api.orders.create(
-        { customerName, email, phone, address, paymentMethod },
+        { customerName, email, phone, paymentMethod },
         token
       );
       setOrder(created);
@@ -130,7 +135,7 @@ export default function CheckoutPage() {
       <form onSubmit={submit} className="grid gap-10 lg:grid-cols-[1fr_360px]">
         <div className="space-y-8">
           <section>
-            <h2 className="mb-4 text-lg font-bold text-ink">Thông tin giao hàng</h2>
+            <h2 className="mb-4 text-lg font-bold text-ink">Thông tin người mua</h2>
             <div className="grid gap-4 sm:grid-cols-2">
               <Field label="Họ tên *">
                 <input
@@ -159,15 +164,12 @@ export default function CheckoutPage() {
                   placeholder="0123456789"
                 />
               </Field>
-              <Field label="Địa chỉ *">
-                <input
-                  required
-                  value={address}
-                  onChange={(e) => setAddress(e.target.value)}
-                  className={inputClass}
-                  placeholder="Số nhà, đường, quận/huyện"
-                />
-              </Field>
+            </div>
+            <div className="mt-4 rounded-xl border border-edge bg-surface p-4 text-sm">
+              <span className="text-ink-soft">
+                Sản phẩm là <b className="text-ink">key kích hoạt Steam</b> — mã key sẽ được
+                gửi ngay trong đơn hàng sau khi thanh toán thành công, không cần địa chỉ giao hàng.
+              </span>
             </div>
           </section>
 
@@ -216,6 +218,7 @@ export default function CheckoutPage() {
                   <li>Thanh toán bằng chuyển khoản ngân hàng qua mã QR.</li>
                   <li>Vui lòng chuyển khoản <b>đúng số tiền</b> và ghi đúng nội dung để xác nhận nhanh.</li>
                   <li>Đơn hàng sẽ được xử lý sau khi admin xác nhận tiền về.</li>
+                  <li>Key kích hoạt Steam sẽ được cấp ngay khi thanh toán được xác nhận.</li>
                 </ul>
               </div>
             )}

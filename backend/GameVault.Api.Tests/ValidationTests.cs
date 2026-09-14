@@ -77,10 +77,9 @@ public class ValidationTests
     }
 
     [Fact]
-    public void CreateOrderRequest_RequiresAddressAndCustomerName()
+    public void CreateOrderRequest_RequiresCustomerName()
     {
         var result = Validate(new CreateOrderRequest { Email = "a@b.com" });
         Assert.Contains(result, r => r.ErrorMessage == "Tên người nhận là bắt buộc.");
-        Assert.Contains(result, r => r.ErrorMessage == "Địa chỉ là bắt buộc.");
     }
 }

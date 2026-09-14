@@ -12,6 +12,8 @@ import {
   Clock,
   XCircle,
   Camera,
+  Copy,
+  Keyhole,
 } from "@phosphor-icons/react";
 import { useAuth } from "@/lib/auth";
 import { useToast } from "@/components/ui/toast";
@@ -289,6 +291,14 @@ export default function AccountPage() {
 }
 
 function OrdersTab({ orders, loading }: { orders: OrderDto[]; loading: boolean }) {
+  const [copiedKey, setCopiedKey] = useState<string | null>(null);
+
+  const copyKey = (key: string) => {
+    navigator.clipboard?.writeText(key);
+    setCopiedKey(key);
+    setTimeout(() => setCopiedKey(null), 1500);
+  };
+
   if (loading) return <SkeletonLines />;
   if (!orders.length) {
     return (
@@ -345,6 +355,47 @@ function OrdersTab({ orders, loading }: { orders: OrderDto[]; loading: boolean }
                 </div>
               ))}
             </div>
+
+            {order.items.some((i) => i.keys?.length) && (
+              <div className="mt-4 space-y-3">
+                {order.items.map(
+                  (item) =>
+                    item.keys.length > 0 && (
+                      <div key={item.gameId}>
+                        <p className="mb-1.5 flex items-center gap-1.5 text-sm font-semibold text-ink">
+                          <Keyhole size={15} className="text-accent" />
+                          {item.gameTitle}
+                          <span className="text-xs font-normal text-ink-soft">
+                            × {item.quantity} key
+                          </span>
+                        </p>
+                        <div className="space-y-1.5">
+                          {item.keys.map((key) => (
+                            <div
+                              key={key}
+                              className="flex items-center justify-between gap-3 rounded-lg border border-edge bg-canvas px-3 py-2"
+                            >
+                              <span className="font-mono text-xs text-ink">{key}</span>
+                              <button
+                                onClick={() => copyKey(key)}
+                                className="flex shrink-0 items-center gap-1 rounded-md border border-edge px-2 py-1 text-xs font-medium text-ink-soft transition hover:border-accent/50 hover:text-accent"
+                              >
+                                {copiedKey === key ? (
+                                  <CheckCircle size={13} className="text-accent" weight="fill" />
+                                ) : (
+                                  <Copy size={13} />
+                                )}
+                                {copiedKey === key ? "Đã chép" : "Sao chép"}
+                              </button>
+                            </div>
+                          ))}
+                        </div>
+                      </div>
+                    )
+                )}
+              </div>
+            )}
+
             <div className="mt-4 flex items-center justify-between border-t border-edge pt-3 text-sm">
               <span className="text-ink-soft">
                 {order.items.reduce((a, i) => a + i.quantity, 0)} sản phẩm

@@ -27,17 +27,24 @@ public class CartService : ICartService
 
     public async Task<(bool Success, string? Error, CartItemDto? Item)> AddItemAsync(int userId, AddCartItemRequest request)
     {
-        var game = await _db.Games.FirstOrDefaultAsync(g => g.Id == request.GameId && g.IsActive);
+        var game = await _db.Games
+            .Include(g => g.GameKeys)
+            .FirstOrDefaultAsync(g => g.Id == request.GameId && g.IsActive);
         if (game == null) return (false, "Game không tồn tại.", null);
         if (request.Quantity < 1) return (false, "Số lượng không hợp lệ.", null);
         if (request.Quantity > 10) return (false, "Số lượng tối đa là 10.", null);
+
+        var available = game.GameKeys.Count(k => k.Status == "Available");
+        if (available <= 0) return (false, "Game đã hết key.", null);
+
+        var addQty = Math.Min(request.Quantity, available);
 
         var cart = await GetOrCreateAsync(userId);
         var existing = cart.Items.FirstOrDefault(i => i.GameId == request.GameId);
 
         if (existing != null)
         {
-            var newQty = existing.Quantity + request.Quantity;
+            var newQty = Math.Min(existing.Quantity + addQty, available);
             if (newQty > 10) return (false, "Số lượng trong giỏ đã đạt tối đa.", null);
             existing.Quantity = newQty;
         }
@@ -47,7 +54,7 @@ public class CartService : ICartService
             {
                 CartId = cart.Id,
                 GameId = game.Id,
-                Quantity = request.Quantity,
+                Quantity = addQty,
                 BasePrice = game.Price,
                 UnitPrice = game.DiscountPrice ?? game.Price,
                 AddedAt = DateTime.UtcNow
@@ -57,7 +64,7 @@ public class CartService : ICartService
         await _db.SaveChangesAsync();
 
         var fresh = await _db.CartItems
-            .Include(i => i.Game)
+            .Include(i => i.Game).ThenInclude(g => g.GameKeys)
             .FirstOrDefaultAsync(i => i.CartId == cart.Id && i.GameId == request.GameId);
 
         return (true, null, ToItemDto(fresh!));
@@ -71,6 +78,10 @@ public class CartService : ICartService
 
         if (request.Quantity < 1) return (false, "Số lượng không hợp lệ.");
         if (request.Quantity > 10) return (false, "Số lượng tối đa là 10.");
+
+        var available = item.Game.GameKeys.Count(k => k.Status == "Available");
+        if (available <= 0) return (false, "Game đã hết key.");
+        if (request.Quantity > available) return (false, $"Game chỉ còn {available} key.");
 
         item.Quantity = request.Quantity;
         await _db.SaveChangesAsync();
@@ -98,7 +109,7 @@ public class CartService : ICartService
     private async Task<Models.Cart> GetOrCreateAsync(int userId)
     {
         var cart = await _db.Carts
-            .Include(c => c.Items).ThenInclude(i => i.Game)
+            .Include(c => c.Items).ThenInclude(i => i.Game).ThenInclude(g => g.GameKeys)
             .FirstOrDefaultAsync(c => c.UserId == userId);
 
         if (cart == null)
@@ -149,6 +160,7 @@ public class CartService : ICartService
         // locked effective price == price actually charged per unit
         DiscountPrice = item.UnitPrice < item.BasePrice ? item.UnitPrice : (decimal?)null,
         // charged at the locked effective price
-        LineTotal = item.UnitPrice * item.Quantity
+        LineTotal = item.UnitPrice * item.Quantity,
+        AvailableKeys = item.Game.GameKeys.Count(k => k.Status == "Available")
     };
 }

@@ -69,6 +69,11 @@ export default function CartPage() {
                     >
                       {item.gameTitle}
                     </Link>
+                    {item.availableKeys != null && (
+                      <p className="mt-0.5 text-[11px] text-ink-soft">
+                        Còn {item.availableKeys} key
+                      </p>
+                    )}
                     <button
                       onClick={() => removeItem(item.id)}
                       className="text-ink-soft hover:text-danger"
@@ -92,7 +97,13 @@ export default function CartPage() {
                       </span>
                       <button
                         onClick={() =>
-                          updateQuantity(item.id, Math.min(10, item.quantity + 1))
+                          updateQuantity(
+                            item.id,
+                            Math.min(
+                              Math.min(10, item.availableKeys ?? 10),
+                              item.quantity + 1
+                            )
+                          )
                         }
                         className="p-2 text-ink-soft hover:text-ink"
                       >

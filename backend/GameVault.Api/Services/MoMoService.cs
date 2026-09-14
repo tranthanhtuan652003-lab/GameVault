@@ -48,12 +48,14 @@ public class MoMoService : IMoMoService
     private readonly GameVaultDbContext _db;
     private readonly MoMoOptions _options;
     private readonly IHttpClientFactory _httpClientFactory;
+    private readonly IOrderService _orders;
 
-    public MoMoService(GameVaultDbContext db, IOptions<MoMoOptions> options, IHttpClientFactory httpClientFactory)
+    public MoMoService(GameVaultDbContext db, IOptions<MoMoOptions> options, IHttpClientFactory httpClientFactory, IOrderService orders)
     {
         _db = db;
         _options = options.Value;
         _httpClientFactory = httpClientFactory;
+        _orders = orders;
     }
 
     // Chế độ mô phỏng: dùng khi chưa có key MoMo thật (phục vụ demo / QA).
@@ -195,7 +197,9 @@ public class MoMoService : IMoMoService
         order.PaidAt = DateTime.UtcNow;
         order.Status = "Processing";
 
-        await _db.SaveChangesAsync();
+        var (deliverOk, deliverErr) = await _orders.DeliverKeysForPaidOrderAsync(order.Id);
+        if (!deliverOk) return (false, deliverErr);
+
         return (true, null);
     }
 
@@ -230,6 +234,9 @@ public class MoMoService : IMoMoService
             order.PaymentStatus = "Paid";
             order.PaidAt = DateTime.UtcNow;
             order.Status = "Processing";
+
+            var (deliverOk, deliverErr) = await _orders.DeliverKeysForPaidOrderAsync(order.Id);
+            if (!deliverOk) return (false, deliverErr, callbackResult);
         }
         else
         {
@@ -270,7 +277,9 @@ public class MoMoService : IMoMoService
         order.PaidAt = DateTime.UtcNow;
         order.Status = "Processing";
 
-        await _db.SaveChangesAsync();
+        var (deliverOk, deliverErr) = await _orders.DeliverKeysForPaidOrderAsync(order.Id);
+        if (!deliverOk) return (false, deliverErr);
+
         return (true, null);
     }
 

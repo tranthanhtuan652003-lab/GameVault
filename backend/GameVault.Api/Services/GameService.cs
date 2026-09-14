@@ -29,6 +29,7 @@ public class GameService : IGameService
             .Include(g => g.GameDevelopers).ThenInclude(gd => gd.Developer)
             .Include(g => g.GamePublishers).ThenInclude(gp => gp.Publisher)
             .Include(g => g.GameImages)
+            .Include(g => g.GameKeys)
             .Where(g => g.IsActive)
             .AsQueryable();
 
@@ -238,7 +239,7 @@ public class GameService : IGameService
         page = page < 1 ? 1 : page;
         pageSize = pageSize < 1 ? 20 : pageSize > 100 ? 100 : pageSize;
 
-        var query = _db.Games.AsQueryable();
+        var query = _db.Games.Include(g => g.GameKeys).AsQueryable();
 
         if (!string.IsNullOrWhiteSpace(search))
         {
@@ -322,6 +323,7 @@ public class GameService : IGameService
             .Include(g => g.GameDevelopers).ThenInclude(gd => gd.Developer)
             .Include(g => g.GamePublishers).ThenInclude(gp => gp.Publisher)
             .Include(g => g.GameImages)
+            .Include(g => g.GameKeys)
             .Where(g => g.IsActive)
             .FirstOrDefaultAsync(predicate);
     }
@@ -375,6 +377,7 @@ public class GameService : IGameService
         SystemRequirements = g.SystemRequirements,
         IsActive = g.IsActive,
         SalesCount = g.SalesCount,
+        AvailableKeys = g.GameKeys.Count(k => k.Status == "Available"),
         Genres = g.GameGenres.Select(gg => gg.Genre.Name).ToList(),
         Platforms = g.GamePlatforms.Select(gp => gp.Platform.Name).ToList(),
         Developers = g.GameDevelopers.Select(gd => gd.Developer.Name).ToList(),

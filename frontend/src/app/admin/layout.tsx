@@ -12,6 +12,7 @@ import {
   Monitor,
   StarHalf,
   SignOut,
+  Keyhole,
 } from "@phosphor-icons/react";
 import { useAuth } from "@/lib/auth";
 import { cn } from "@/lib/cn";
@@ -19,6 +20,7 @@ import { cn } from "@/lib/cn";
 const navItems = [
   { href: "/admin", label: "Tổng quan", icon: ChartLineUp },
   { href: "/admin/games", label: "Game", icon: GameController },
+  { href: "/admin/keys", label: "Game keys", icon: Keyhole },
   { href: "/admin/categories", label: "Thể loại", icon: TagSimple },
   { href: "/admin/platforms", label: "Nền tảng", icon: Monitor },
   { href: "/admin/users", label: "Người dùng", icon: UsersThree },

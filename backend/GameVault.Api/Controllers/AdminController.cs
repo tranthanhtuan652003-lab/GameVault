@@ -16,19 +16,22 @@ public class AdminController : ControllerBase
     private readonly IOrderService _orders;
     private readonly IReviewService _reviews;
     private readonly IExternalGameApiService _external;
+    private readonly IGameKeyService _gameKeys;
 
     public AdminController(
         IAdminService admin,
         IGameService games,
         IOrderService orders,
         IReviewService reviews,
-        IExternalGameApiService external)
+        IExternalGameApiService external,
+        IGameKeyService gameKeys)
     {
         _admin = admin;
         _games = games;
         _orders = orders;
         _reviews = reviews;
         _external = external;
+        _gameKeys = gameKeys;
     }
 
     [HttpGet("dashboard")]
@@ -131,6 +134,34 @@ public class AdminController : ControllerBase
         if (string.IsNullOrWhiteSpace(q)) return BadRequest(Res.Fail("Thiếu từ khóa."));
         var results = await _external.SearchAsync(q, limit);
         return Ok(Res.Ok("Kết quả từ RAWG", results));
+    }
+
+    [HttpGet("game-keys")]
+    public async Task<IActionResult> GameKeys([FromQuery] int? gameId = null) =>
+        Ok(Res.Ok("Danh sách key", await _gameKeys.ListAsync(gameId)));
+
+    [HttpPost("game-keys/generate")]
+    public async Task<IActionResult> GenerateGameKeys([FromBody] GenerateGameKeysRequest request)
+    {
+        var result = await _gameKeys.GenerateAsync(request.GameId, request.Count);
+        if (!result.Success) return BadRequest(Res.Fail(result.Error!));
+        return StatusCode(201, Res.Ok("Tạo key thành công", result.Data!));
+    }
+
+    [HttpPost("game-keys/import")]
+    public async Task<IActionResult> ImportGameKeys([FromBody] ImportGameKeysRequest request)
+    {
+        var result = await _gameKeys.ImportAsync(request.GameId, request.Keys);
+        if (!result.Success) return BadRequest(Res.Fail(result.Error!));
+        return Ok(Res.Ok("Import key thành công", result.Data!));
+    }
+
+    [HttpDelete("game-keys/{id:int}")]
+    public async Task<IActionResult> DeleteGameKey(int id)
+    {
+        var result = await _gameKeys.DeleteAsync(id);
+        if (!result.Success) return BadRequest(Res.Fail(result.Error!));
+        return Ok(Res.Ok("Xóa key thành công"));
     }
 }
 

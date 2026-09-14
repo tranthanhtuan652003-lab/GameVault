@@ -15,4 +15,6 @@ public class OrderDetail
     public decimal UnitPrice { get; set; }
     public decimal Discount { get; set; }
     public decimal LineTotal { get; set; }
+
+    public ICollection<GameKey> GameKeys { get; set; } = new List<GameKey>();
 }

@@ -60,6 +60,7 @@ export interface GameDto {
   systemRequirements: string;
   isActive: boolean;
   salesCount: number;
+  availableKeys: number;
   finalPrice: number;
   discountPercent: number;
   genres: string[];
@@ -99,6 +100,7 @@ export interface CartItemDto {
   unitPrice: number;
   discountPrice: number | null;
   lineTotal: number;
+  availableKeys: number;
 }
 
 export interface CartDto {
@@ -128,6 +130,7 @@ export interface OrderItemDto {
   unitPrice: number;
   discount: number;
   lineTotal: number;
+  keys: string[];
 }
 
 export interface OrderDto {
@@ -250,4 +253,31 @@ export interface RegisterData {
   email: string;
   password: string;
   fullName: string;
+}
+
+export interface GameKeyDto {
+  id: number;
+  gameId: number;
+  gameTitle: string;
+  key: string;
+  status: string;
+  orderDetailId: number | null;
+  soldAt: string | null;
+  createdAt: string;
+}
+
+export interface GenerateGameKeysRequest {
+  gameId: number;
+  count: number;
+}
+
+export interface ImportGameKeysRequest {
+  gameId: number;
+  keys: string[];
+}
+
+export interface ImportKeysResult {
+  created: number;
+  duplicates: number;
+  skipped: number;
 }

@@ -153,7 +153,15 @@ export function CartProvider({ children }: { children: ReactNode }) {
         let items = current.items;
         if (existing) {
           items = current.items.map((i) =>
-            i.gameId === gameId ? { ...i, quantity: Math.min(10, i.quantity + quantity) } : i
+            i.gameId === gameId
+              ? {
+                  ...i,
+                  quantity: Math.min(
+                    Math.min(10, game.availableKeys > 0 ? game.availableKeys : 10),
+                    i.quantity + quantity
+                  ),
+                }
+              : i
           );
         } else {
           const unitPrice = game.price;
@@ -166,7 +174,11 @@ export function CartProvider({ children }: { children: ReactNode }) {
               gameTitle: game.title,
               gameSlug: game.slug,
               coverImage: game.coverImage,
-              quantity: Math.min(10, quantity),
+              availableKeys: game.availableKeys ?? 0,
+              quantity: Math.min(
+                Math.min(10, game.availableKeys > 0 ? game.availableKeys : 10),
+                quantity
+              ),
               unitPrice,
               discountPrice,
               lineTotal: (discountPrice ?? unitPrice) * quantity,
@@ -196,7 +208,11 @@ export function CartProvider({ children }: { children: ReactNode }) {
         const next = recomputeCart({
           ...current,
           items: current.items
-            .map((i) => (i.id === itemId ? { ...i, quantity } : i))
+            .map((i) =>
+              i.id === itemId
+                ? { ...i, quantity: Math.min(i.availableKeys ?? 10, quantity) }
+                : i
+            )
             .filter((i) => i.quantity > 0),
         });
         guestCartRef.current = next;

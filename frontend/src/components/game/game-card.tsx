@@ -72,6 +72,16 @@ export function GameCard({ game }: { game: GameDto }) {
             {game.title}
           </h3>
 
+          <p
+            className={
+              game.availableKeys > 0
+                ? "text-[11px] font-medium text-accent"
+                : "text-[11px] font-medium text-danger"
+            }
+          >
+            {game.availableKeys > 0 ? `Còn ${game.availableKeys} key` : "Hết key"}
+          </p>
+
           <div className="mt-auto flex items-center justify-between pt-2">
             <div className="flex flex-col">
               {game.discountPercent > 0 ? (
@@ -92,9 +102,9 @@ export function GameCard({ game }: { game: GameDto }) {
 
             <button
               onClick={handleAdd}
-              disabled={adding}
+              disabled={adding || game.availableKeys <= 0}
               aria-label="Thêm vào giỏ hàng"
-              className="flex h-9 w-9 items-center justify-center rounded-lg border border-edge bg-surface-2 text-ink-soft transition hover:border-accent hover:text-accent disabled:opacity-50"
+              className="flex h-9 w-9 items-center justify-center rounded-lg border border-edge bg-surface-2 text-ink-soft transition hover:border-accent hover:text-accent disabled:cursor-not-allowed disabled:opacity-40"
             >
               <ShoppingCartSimple size={18} />
             </button>

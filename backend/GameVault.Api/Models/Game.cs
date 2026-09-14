@@ -28,4 +28,5 @@ public class Game
     public ICollection<WishlistItem> WishlistItems { get; set; } = new List<WishlistItem>();
     public ICollection<CartItem> CartItems { get; set; } = new List<CartItem>();
     public ICollection<OrderDetail> OrderDetails { get; set; } = new List<OrderDetail>();
+    public ICollection<GameKey> GameKeys { get; set; } = new List<GameKey>();
 }

@@ -12,13 +12,19 @@ public interface IOrderService
     Task<OrderDto?> GetOrderAsync(int userId, int orderId, bool isAdmin = false);
     Task<(bool Success, string? Error)> UpdateStatusAsync(int orderId, string status);
     Task<(bool Success, string? Error)> ConfirmBankTransferAsync(int orderId, int userId);
+    Task<(bool Success, string? Error)> DeliverKeysForPaidOrderAsync(int orderId);
 }
 
 public class OrderService : IOrderService
 {
     private readonly GameVaultDbContext _db;
+    private readonly IGameKeyService _keys;
 
-    public OrderService(GameVaultDbContext db) => _db = db;
+    public OrderService(GameVaultDbContext db, IGameKeyService keys)
+    {
+        _db = db;
+        _keys = keys;
+    }
 
     public async Task<(bool Success, string? Error, OrderDto? Order)> CreateFromCartAsync(int userId, CreateOrderRequest request)
     {
@@ -26,8 +32,6 @@ public class OrderService : IOrderService
             return (false, "Vui lòng nhập họ tên người nhận.", null);
         if (string.IsNullOrWhiteSpace(request.Email) || !request.Email.Contains('@'))
             return (false, "Email không hợp lệ.", null);
-        if (string.IsNullOrWhiteSpace(request.Address))
-            return (false, "Vui lòng nhập địa chỉ.", null);
 
         // Serializable isolation locks the cart rows while the order is created,
         // so two concurrent checkout requests cannot both drain the same cart
@@ -45,6 +49,14 @@ public class OrderService : IOrderService
         {
             if (!item.Game.IsActive)
                 return (false, $"Game '{item.Game.Title}' không còn khả dụng.", null);
+        }
+
+        // Kiểm tra tồn kho key trước khi tạo đơn (chặn từ sớm, check lại lúc cấp key)
+        foreach (var item in cart.Items)
+        {
+            var available = await _keys.AvailableCountAsync(item.GameId);
+            if (available < item.Quantity)
+                return (false, $"Game '{item.Game.Title}' không đủ key trong kho (còn {available}).", null);
         }
 
         // Pricing: CartItem stores the locked base price (BasePrice) and the
@@ -133,6 +145,18 @@ public class OrderService : IOrderService
         _db.Orders.Add(order);
 
         await _db.SaveChangesAsync();
+
+        // Nếu thanh toán thành công ngay (Demo) thì cấp key vào đơn
+        if (paymentStatus == "Paid")
+        {
+            var (deliverOk, deliverErr) = await DeliverKeysForPaidOrderAsync(order.Id);
+            if (!deliverOk)
+            {
+                await tx.RollbackAsync();
+                return (false, deliverErr, null);
+            }
+        }
+
         await tx.CommitAsync();
         await _db.Entry(order).ReloadAsync();
 
@@ -143,7 +167,7 @@ public class OrderService : IOrderService
     {
         var orders = await _db.Orders
             .AsNoTracking()
-            .Include(o => o.OrderDetails)
+            .Include(o => o.OrderDetails).ThenInclude(d => d.GameKeys)
             .Include(o => o.Payments)
             .Where(o => o.UserId == userId)
             .OrderByDescending(o => o.CreatedAt)
@@ -155,7 +179,7 @@ public class OrderService : IOrderService
     {
         var query = _db.Orders
             .AsNoTracking()
-            .Include(o => o.OrderDetails)
+            .Include(o => o.OrderDetails).ThenInclude(d => d.GameKeys)
             .Include(o => o.Payments)
             .AsQueryable();
 
@@ -195,6 +219,40 @@ public class OrderService : IOrderService
         order.PaymentStatus = "Paid";
         order.PaidAt = DateTime.UtcNow;
         order.Status = "Processing";
+
+        var (deliverOk, deliverErr) = await DeliverKeysForPaidOrderAsync(order.Id);
+        if (!deliverOk) return (false, deliverErr);
+
+        return (true, null);
+    }
+
+    public async Task<(bool Success, string? Error)> DeliverKeysForPaidOrderAsync(int orderId)
+    {
+        var order = await _db.Orders
+            .Include(o => o.OrderDetails).ThenInclude(d => d.GameKeys)
+            .Include(o => o.OrderDetails).ThenInclude(d => d.Game)
+            .FirstOrDefaultAsync(o => o.Id == orderId);
+
+        if (order == null) return (false, "Không tìm thấy đơn hàng.");
+
+        // Idempotent: nếu đơn đã có key bán ra rồi thì bỏ qua
+        var alreadyDelivered = order.OrderDetails.Any(d => d.GameKeys.Any(k => k.Status == "Sold"));
+        if (alreadyDelivered) return (true, null);
+
+        // Check tồn kho key lần cuối trước khi cấp
+        foreach (var detail in order.OrderDetails)
+        {
+            var available = await _keys.AvailableCountAsync(detail.GameId);
+            if (available < detail.Quantity)
+                return (false, $"Game '{detail.GameTitle}' không đủ key trong kho (còn {available}, cần {detail.Quantity}).");
+        }
+
+        var now = DateTime.UtcNow;
+        foreach (var detail in order.OrderDetails)
+        {
+            var reserved = await _keys.ReserveKeysAsync(detail.Game, detail.Quantity, now);
+            foreach (var key in reserved) detail.GameKeys.Add(key);
+        }
 
         await _db.SaveChangesAsync();
         return (true, null);
@@ -238,7 +296,8 @@ public class OrderService : IOrderService
                 Quantity = d.Quantity,
                 UnitPrice = d.UnitPrice,
                 Discount = d.Discount,
-                LineTotal = d.LineTotal
+                LineTotal = d.LineTotal,
+                Keys = d.GameKeys.Where(k => k.Status == "Sold").Select(k => k.Key).ToList()
             }).ToList()
         };
     }

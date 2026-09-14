@@ -179,6 +179,16 @@ export function GameDetailClient({
               </div>
               <div className="ml-auto text-right text-sm text-ink-soft">
                 <p>{game.salesCount} lượt bán</p>
+                <p
+                  className={cn(
+                    "font-semibold",
+                    game.availableKeys > 0 ? "text-accent" : "text-danger"
+                  )}
+                >
+                  {game.availableKeys > 0
+                    ? `Còn ${game.availableKeys} key`
+                    : "Hết key"}
+                </p>
                 <p className="font-mono">{game.slug}</p>
               </div>
             </div>
@@ -188,10 +198,11 @@ export function GameDetailClient({
                 size="lg"
                 onClick={handleAddToCart}
                 loading={cartLoading}
+                disabled={game.availableKeys <= 0}
                 className="w-full"
               >
                 <ShoppingCartSimple size={20} weight="fill" />
-                Thêm vào giỏ hàng
+                {game.availableKeys > 0 ? "Thêm vào giỏ hàng" : "Hết key"}
               </Button>
               <Button
                 variant="outline"
@@ -204,6 +215,10 @@ export function GameDetailClient({
                 {wished ? "Trong danh sách yêu thích" : "Thêm vào yêu thích"}
               </Button>
             </div>
+            <p className="mt-3 text-xs text-ink-soft">
+              Bạn sẽ nhận key kích hoạt Steam ngay sau khi thanh toán thành công,
+              được lưu trong mục Đơn hàng của tài khoản.
+            </p>
           </div>
 
           {/* Meta */}

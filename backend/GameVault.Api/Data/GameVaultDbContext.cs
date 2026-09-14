@@ -27,6 +27,7 @@ public class GameVaultDbContext : DbContext
     public DbSet<Order> Orders => Set<Order>();
     public DbSet<OrderDetail> OrderDetails => Set<OrderDetail>();
     public DbSet<Payment> Payments => Set<Payment>();
+    public DbSet<GameKey> GameKeys => Set<GameKey>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -40,6 +41,7 @@ public class GameVaultDbContext : DbContext
         ConfigureWishlist(modelBuilder);
         ConfigureCart(modelBuilder);
         ConfigureOrders(modelBuilder);
+        ConfigureGameKeys(modelBuilder);
     }
 
     private static void ConfigureRoles(ModelBuilder mb)
@@ -295,6 +297,23 @@ public class GameVaultDbContext : DbContext
 
             e.HasOne(p => p.Order).WithMany(o => o.Payments).HasForeignKey(p => p.OrderId).OnDelete(DeleteBehavior.Cascade);
             e.HasOne(p => p.User).WithMany(u => u.Payments).HasForeignKey(p => p.UserId).OnDelete(DeleteBehavior.Restrict);
+        });
+    }
+
+    private static void ConfigureGameKeys(ModelBuilder mb)
+    {
+        mb.Entity<GameKey>(e =>
+        {
+            e.ToTable("GameKeys");
+            e.HasKey(k => k.Id);
+            e.Property(k => k.Key).HasMaxLength(100).IsRequired();
+            e.Property(k => k.Status).HasMaxLength(20).IsRequired();
+            e.HasIndex(k => k.Key).IsUnique();
+            e.HasIndex(k => new { k.GameId, k.Status });
+            e.HasIndex(k => new { k.GameId, k.OrderDetailId });
+
+            e.HasOne(k => k.Game).WithMany(g => g.GameKeys).HasForeignKey(k => k.GameId).OnDelete(DeleteBehavior.Restrict);
+            e.HasOne(k => k.OrderDetail).WithMany(d => d.GameKeys).HasForeignKey(k => k.OrderDetailId).OnDelete(DeleteBehavior.Restrict);
         });
     }
 }

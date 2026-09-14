@@ -60,7 +60,24 @@ public sealed class TestDb : IDisposable
         };
         Db.Games.Add(game);
         Db.SaveChanges();
+
+        SeedAvailableKeys(game.Id, 20);
         return game;
+    }
+
+    public void SeedAvailableKeys(int gameId, int count)
+    {
+        for (var i = 1; i <= count; i++)
+        {
+            Db.GameKeys.Add(new GameKey
+            {
+                GameId = gameId,
+                Key = $"TESTKEY-{gameId:D2}-{i:D3}-AAAAA-BBBBB-CCCCC",
+                Status = "Available",
+                CreatedAt = DateTime.UtcNow
+            });
+        }
+        Db.SaveChanges();
     }
 
     public void Dispose()
