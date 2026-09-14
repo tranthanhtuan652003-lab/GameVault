@@ -103,18 +103,12 @@ builder.Services.AddRateLimiter(options =>
             }));
 });
 
-// CORS – allow override via CORS_ALLOWED_ORIGINS env (comma-separated).
-var originsEnv = builder.Configuration["CORS_ALLOWED_ORIGINS"];
-string[] origins;
-if (!string.IsNullOrWhiteSpace(originsEnv))
-    origins = originsEnv.Split(',', StringSplitOptions.RemoveEmptyEntries | StringSplitOptions.TrimEntries);
-else
-    origins = builder.Configuration.GetSection("Cors:AllowedOrigins").Get<string[]>() ?? new[] { "http://localhost:3000" };
-
+// CORS – demo/submission: cho phép mọi origin (browser) để frontend Vercel
+// luôn gọi được mà không cần cấu hình danh sách origin.
 builder.Services.AddCors(options =>
 {
     options.AddPolicy("GameVaultCors", policy =>
-        policy.WithOrigins(origins)
+        policy.AllowAnyOrigin()
               .AllowAnyHeader()
               .AllowAnyMethod());
 });
