@@ -13,6 +13,7 @@
 - **Giỏ hàng** thêm/xoá/cập nhật số lượng, tính tổng tự động.
 - **Thanh toán** tạo đơn hàng, khoá giá & khoá số lượng tại thời điểm order.
 - **3 phương thức thanh toán**: `Demo` (mô phỏng ngay), `BankTransfer` (chuyển khoản ngân hàng kèm QR code, admin xác nhận), `MoMo` (redirect Ví MoMo, webhook tự xác nhận).
+- **Bán key kích hoạt Steam**: mỗi game có kho key (seed sẵn 10 key/game), hiển thị "còn N key", số lượng mua giới hạn theo kho, key được cấp **ngay khi đơn thành công** và xem/copy trực tiếp trong trang Đơn hàng.
 - **Wishlist** lưu game yêu thích (danh bạ riêng cho từng user).
 - **Đăng ký / Đăng nhập / Đổi mật khẩu / Cập nhật hồ sơ / Upload avatar.**
 - **Viết và quản lý review** sau khi đã mua game.
@@ -20,6 +21,7 @@
 ### Phía quản trị (Admin)
 - **Dashboard** thống kê doanh thu (biểu đồ SVG 7 ngày: revenue, orders, AOV, % tăng/giảm), đơn hàng gần đây.
 - **Quản trị game** (CRUD), **thể loại**, **nền tảng**, **developer**, **publisher**.
+- **Quản trị game key** (`/admin/keys`) — xem key khả dụng/đã bán theo game, tự sinh key hàng loạt, nhập key thủ công, xoá key lỗi chưa bán.
 - **Quản trị đơn hàng** — cập nhật trạng thái.
 - **Quản trị user** — kích hoạt / vô hiệu hoá, đổi role.
 - **Quản trị review** — xem/duyệt toàn bộ review.
@@ -31,12 +33,12 @@
 
 | Lớp        | Công nghệ                                                            |
 |------------|----------------------------------------------------------------------|
-| Backend    | ASP.NET Core Web API — **.NET 9**, EF Core **9.0.16** (SQL Server)   |
+| Backend    | ASP.NET Core Web API — **.NET 9**, EF Core **9.0.16** (PostgreSQL)    |
 | Frontend   | **Next.js 16** (App Router, Turbopack), **React 19**, TypeScript     |
 | Styling    | Tailwind CSS, `motion` (scroll reveal / hover animations)            |
 | Icons      | `@phosphor-icons/react`                                              |
 | Auth       | JWT Bearer (Microsoft.AspNetCore.Authentication.JwtBearer), BCrypt   |
-| Database   | SQL Server Express (`localhost\SQLEXPRESS`, DB `GameVaultDB`)        |
+| Database   | **PostgreSQL 17** (`localhost:5432`, DB `GameVaultDB`, Npgsql)       |
 | API Docs   | Swagger / OpenAPI (Swashbuckle, chỉ bật ở Development)               |
 | External   | RAWG Video Games Database API (tìm game, tuỳ chọn)                   |
 | Tests      | Backend: xUnit; Frontend: Vitest                                     |
@@ -60,7 +62,7 @@ GameVault/
 │     ├─ Models/             # 20 entity (POCO)
 │     ├─ Contracts/          # DTOs (request/response)
 │     ├─ Services/           # business logic + gọi RAWG external API
-│     ├─ Data/               # DbContext, DbSeeder (roles + admin + 20 game Steam)
+│     ├─ Data/               # DbContext, DbSeeder (roles + admin + 24 game Steam + key)
 │     ├─ Middlewares/        # ExceptionHandlingMiddleware
 │     ├─ Helpers/            # ApiResponse/Res (chuẩn format response)
 │     ├─ Migrations/         # EF Core migrations
@@ -88,9 +90,9 @@ GameVault/
 |-------------------------|---------------|
 | .NET SDK                | 9               |
 | Node.js                 | 20+             |
-| SQL Server Express      | instance `localhost\SQLEXPRESS` |
+| PostgreSQL              | 17 (user `postgres` / password `postgres`, port `5432`) |
 
-> ⚠️ Nếu SQL Server của bạn là **instance mặc định khác** (không phải `SQLEXPRESS`) hoặc port khác, sửa connection string trong `backend/GameVault.Api/appsettings.json`.
+> ⚠️ Nếu PostgreSQL của bạn đặt user/password khác, sửa connection string trong `backend/GameVault.Api/appsettings.json` (hoặc dùng URL `postgresql://...` của Neon cloud — backend tự nhận diện và chuyển đổi).
 
 ---
 
@@ -107,7 +109,8 @@ dotnet run
 - API chạy tại `http://localhost:5080`.
 - Khi khởi động, backend **tự động**:
   1. **Migrate** database (tạo DB `GameVaultDB` nếu chưa có).
-  2. **Seed** dữ liệu nền tảng (idempotent — không chèn trùng): 2 roles (`Admin`, `User`), 1 tài khoản admin và **20 game Steam phổ biến** (kèm thể loại, nền tảng, dev/publisher, ảnh bìa, gallery, trailer) nếu chưa tồn tại.
+  2. **Seed** dữ liệu nền tảng (idempotent — không chèn trùng): 2 roles (`Admin`, `User`), 1 tài khoản admin và **24 game Steam phổ biến** (kèm thể loại, nền tảng, dev/publisher, ảnh bìa, gallery, trailer) nếu chưa tồn tại.
+  3. **Seed key Steam**: mỗi game chưa có key sẽ được tự tạo **10 key khả dụng** dạng `XXXXX-XXXXX-XXXXX`.
 - **Swagger** (chỉ ở Development): `http://localhost:5080/swagger` — có nút Authorize để dán JWT token (chỉ dán chuỗi token, không cần thêm tiền tố `Bearer `).
 
 > 🛑 **Dừng backend sạch sẽ:** `powershell -File ../stop-backend.ps1` (kill instance và giải phóng port 5080).
@@ -116,7 +119,7 @@ dotnet run
 
 | Khoá                     | Ý nghĩa                                                            |
 |--------------------------|--------------------------------------------------------------------|
-| `ConnectionStrings:DefaultConnection` | Connection string tới SQL Server                        |
+| `ConnectionStrings:DefaultConnection` | Connection string PostgreSQL. Hỗ trợ cả URL Neon `postgresql://...` |
 | `Jwt:Key`                | Khoá ký JWT. Trong Production **bắt buộc** set qua biến môi trường `JWT_KEY` (không dùng placeholder). |
 | `Jwt:ExpiryMinutes`      | Thời hạn token (mặc định 120 phút)                                |
 | `Cors:AllowedOrigins`    | Danh sách origin được phép gọi API                                  |
@@ -159,7 +162,7 @@ npm run start    # mặc định chạy ở http://localhost:3000
 |-------|----------|-------------|----------------------------------|
 | Admin | `admin`  | `Admin@123` | Không thể bị auto-seed chồng     |
 
-Seeder tự tạo **20 game Steam phổ biến** (Elden Ring, Cyberpunk 2077, Baldur's Gate 3, ...) khi khởi động để cửa hàng có dữ liệu xem ngay. Mỗi game đi kèm thể loại/nền tảng/dev/publisher, ảnh bìa + gallery (Steam CDN), và nút **"Xem trailer"** mở tìm kiếm trailer chính thức trên YouTube. Không tạo user/review/order mẫu — chúng do người dùng tự tạo qua UI/API.
+Seeder tự tạo **24 game Steam phổ biến** (Elden Ring, Cyberpunk 2077, Baldur's Gate 3, ...) khi khởi động để cửa hàng có dữ liệu xem ngay. Mỗi game đi kèm thể loại/nền tảng/dev/publisher, ảnh bìa + gallery (Steam CDN), nút **"Xem trailer"** mở tìm kiếm trailer chính thức trên YouTube, và **10 key kích hoạt Steam** để bán. Không tạo user/review/order mẫu — chúng do người dùng tự tạo qua UI/API.
 
 ---
 
@@ -181,6 +184,7 @@ Seeder tự tạo **20 game Steam phổ biến** (Elden Ring, Cyberpunk 2077, Ba
 | `/admin/reviews`   | Quản trị review            |
 | `/admin/users`     | Quản trị người dùng        |
 | `/admin/orders`    | Quản trị đơn hàng          |
+| `/admin/keys`      | Quản trị kho key Steam     |
 
 ---
 
@@ -228,8 +232,8 @@ cd backend/GameVault.Api.Tests
 dotnet test
 ```
 
-- Coverage: `AuthService`, `CartService`, `OrderService` (khoá giá, giới hạn số lượng, phân quyền theo user) và validation DataAnnotations.
-- Dùng **SQLite in-memory** — không cần SQL Server để chạy test.
+- Coverage: `AuthService`, `CartService`, `OrderService` (khoá giá, giới hạn số lượng, kho key, cấp key khi thanh toán, phân quyền theo user) và validation DataAnnotations.
+- Dùng **SQLite in-memory** — không cần PostgreSQL để chạy test.
 
 ### Frontend (Vitest)
 
