@@ -1,6 +1,7 @@
 using GameVault.Api.Contracts;
 using GameVault.Api.Services;
 using Microsoft.Extensions.Configuration;
+using System.Net.Http;
 using Xunit;
 
 namespace GameVault.Api.Tests;
@@ -15,10 +16,12 @@ public class AuthServiceTests
                 ["Jwt:Key"] = "super-secret-test-key-that-is-long-enough-for-hmac",
                 ["Jwt:Issuer"] = "test",
                 ["Jwt:Audience"] = "test",
-                ["Jwt:ExpiryMinutes"] = "120"
+                ["Jwt:ExpiryMinutes"] = "120",
+                ["Google:ClientId"] = ""
             })
             .Build(),
-        new TestEnv());
+        new TestEnv(),
+        new FakeHttpClientFactory());
 
     [Fact]
     public async Task Register_CreatesUserWithCartAndWishlist()
@@ -151,5 +154,23 @@ public class AuthServiceTests
             CurrentPassword = "User@123", NewPassword = "User@123"
         });
         Assert.False(samePassword.Success);
+    }
+
+    [Fact]
+    public async Task GoogleSignIn_WhenNotConfigured_ReturnsError()
+    {
+        using var db = new TestDb();
+        db.SeedRole("User");
+
+        var svc = NewAuth(db);
+        var res = await svc.GoogleSignInAsync("some-id-token");
+
+        Assert.False(res.Success);
+        Assert.Equal("Chưa cấu hình Google Sign-In.", res.Error);
+    }
+
+    internal sealed class FakeHttpClientFactory : IHttpClientFactory
+    {
+        public HttpClient CreateClient(string name) => new HttpClient();
     }
 }

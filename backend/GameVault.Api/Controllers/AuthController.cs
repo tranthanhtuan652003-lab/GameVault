@@ -37,6 +37,16 @@ public class AuthController : ControllerBase
         return Ok(Res.Ok("Đăng nhập thành công", result.Data!));
     }
 
+    [HttpPost("google")]
+    [EnableRateLimiting("auth")]
+    public async Task<IActionResult> Google([FromBody] GoogleLoginRequest request)
+    {
+        var result = await _auth.GoogleSignInAsync(request.IdToken);
+        if (!result.Success)
+            return Unauthorized(Res.Fail(result.Error!));
+        return Ok(Res.Ok("Đăng nhập Google thành công", result.Data!));
+    }
+
     [Authorize]
     [HttpGet("me")]
     public async Task<IActionResult> Me()

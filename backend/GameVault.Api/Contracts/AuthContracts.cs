@@ -29,6 +29,12 @@ public class LoginRequest
     public string Password { get; set; } = string.Empty;
 }
 
+public class GoogleLoginRequest
+{
+    [Required(AllowEmptyStrings = false, ErrorMessage = "Thiếu token xác thực Google.")]
+    public string IdToken { get; set; } = string.Empty;
+}
+
 public class LoginResponse
 {
     public int Id { get; set; }

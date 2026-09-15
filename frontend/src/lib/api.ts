@@ -168,6 +168,11 @@ export const api = {
         method: "POST",
         body: data,
       }),
+    google: (idToken: string) =>
+      request<LoginResponse>("/api/Auth/google", {
+        method: "POST",
+        body: { idToken },
+      }),
     me: (token: string) =>
       request<UserDto>("/api/Auth/me", { token }),
     changePassword: (currentPassword: string, newPassword: string, token: string) =>

@@ -1,6 +1,8 @@
 using System.IdentityModel.Tokens.Jwt;
+using System.Net.Http;
 using System.Security.Claims;
 using System.Text;
+using System.Text.Json;
 using GameVault.Api.Contracts;
 using GameVault.Api.Data;
 using GameVault.Api.Models;
@@ -15,12 +17,14 @@ public class AuthService : IAuthService
     private readonly GameVaultDbContext _db;
     private readonly IConfiguration _config;
     private readonly IWebHostEnvironment _env;
+    private readonly IHttpClientFactory _http;
 
-    public AuthService(GameVaultDbContext db, IConfiguration config, IWebHostEnvironment env)
+    public AuthService(GameVaultDbContext db, IConfiguration config, IWebHostEnvironment env, IHttpClientFactory http)
     {
         _db = db;
         _config = config;
         _env = env;
+        _http = http;
     }
 
     public async Task<(bool Success, string? Error, LoginResponse? Data)> RegisterAsync(RegisterRequest request)
@@ -88,6 +92,101 @@ public class AuthService : IAuthService
 
         var token = GenerateToken(user);
         return (true, null, BuildResponse(user, token));
+    }
+
+    public async Task<(bool Success, string? Error, LoginResponse? Data)> GoogleSignInAsync(string idToken)
+    {
+        var clientId = _config["Google:ClientId"];
+        if (string.IsNullOrWhiteSpace(clientId) || clientId.StartsWith("YOUR_"))
+            return (false, "Chưa cấu hình Google Sign-In.", null);
+
+        if (string.IsNullOrWhiteSpace(idToken))
+            return (false, "Thiếu token xác thực Google.", null);
+
+        // Xác thực ID token bằng Google tokeninfo endpoint (chỉ cần ClientId, không cần secret)
+        using var client = _http.CreateClient();
+        client.Timeout = TimeSpan.FromSeconds(15);
+        HttpResponseMessage response;
+        try
+        {
+            response = await client.GetAsync($"https://oauth2.googleapis.com/tokeninfo?id_token={Uri.EscapeDataString(idToken)}");
+        }
+        catch
+        {
+            return (false, "Không thể xác thực với Google, vui lòng thử lại.", null);
+        }
+
+        if (!response.IsSuccessStatusCode)
+            return (false, "Xác thực Google thất bại.", null);
+
+        using var doc = JsonDocument.Parse(await response.Content.ReadAsStringAsync());
+        var root = doc.RootElement;
+
+        var aud = root.TryGetProperty("aud", out var audEl) ? audEl.GetString() : null;
+        if (aud != clientId)
+            return (false, "Token Google không hợp lệ.", null);
+
+        var email = root.TryGetProperty("email", out var emailEl) ? emailEl.GetString()?.ToLowerInvariant() : null;
+        var emailVerified = root.TryGetProperty("email_verified", out var evEl) && evEl.GetBoolean();
+        if (string.IsNullOrWhiteSpace(email) || !emailVerified)
+            return (false, "Email Google chưa được xác minh.", null);
+
+        var name = root.TryGetProperty("name", out var nameEl) ? nameEl.GetString() : null;
+
+        var user = await _db.Users
+            .Include(u => u.Role)
+            .FirstOrDefaultAsync(u => u.Email == email);
+
+        // Email đã tồn tại tài khoản -> đăng nhập luôn
+        if (user != null)
+        {
+            if (!user.IsActive)
+                return (false, "Tài khoản đã bị khóa.", null);
+            var token = GenerateToken(user);
+            return (true, null, BuildResponse(user, token));
+        }
+
+        // Chưa có tài khoản -> tự động tạo
+        var userRole = await _db.Roles.FirstOrDefaultAsync(r => r.Name == "User")
+            ?? throw new Exception("Role 'User' chưa được seed.");
+
+        var baseName = email.Split('@')[0];
+        var userName = await BuildUniqueUserNameAsync(baseName);
+        var newUser = new User
+        {
+            UserName = userName,
+            Email = email,
+            FullName = string.IsNullOrWhiteSpace(name) ? baseName : name,
+            PasswordHash = BCrypt.Net.BCrypt.HashPassword(Guid.NewGuid().ToString("N") + Guid.NewGuid().ToString("N")),
+            Role = userRole,
+            CreatedAt = DateTime.UtcNow
+        };
+
+        _db.Users.Add(newUser);
+        await _db.SaveChangesAsync();
+
+        _db.Carts.Add(new Cart { UserId = newUser.Id });
+        _db.Wishlists.Add(new Wishlist { UserId = newUser.Id });
+        await _db.SaveChangesAsync();
+
+        var newToken = GenerateToken(newUser);
+        return (true, null, BuildResponse(newUser, newToken));
+    }
+
+    private async Task<string> BuildUniqueUserNameAsync(string baseName)
+    {
+        var safe = new string(baseName.Where(c => char.IsLetterOrDigit(c) || c == '_' || c == '.').Select(c => c).ToArray());
+        if (safe.Length == 0) safe = "user";
+        if (safe.Length > 20) safe = safe[..20];
+
+        var candidate = safe;
+        var i = 1;
+        while (await _db.Users.AnyAsync(u => u.UserName == candidate))
+        {
+            candidate = $"{safe}{i}";
+            i++;
+        }
+        return candidate;
     }
 
     public async Task<(bool Success, string? Error, object? Data)> GetMeAsync(string userName)

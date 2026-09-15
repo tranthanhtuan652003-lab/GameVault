@@ -69,6 +69,7 @@ interface AuthContextValue {
     password: string;
     fullName: string;
   }) => Promise<UserDto>;
+  googleSignIn: (idToken: string) => Promise<UserDto>;
   logout: () => void;
   refreshUser: () => Promise<void>;
   setUser: (user: UserDto) => void;
@@ -123,6 +124,14 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     [persistSession]
   );
 
+  const googleSignIn = useCallback(
+    async (idToken: string) => {
+      const res = await api.auth.google(idToken);
+      return persistSession(res);
+    },
+    [persistSession]
+  );
+
   const logout = useCallback(() => {
     localStorage.removeItem(TOKEN_KEY);
     localStorage.removeItem(USER_KEY);
@@ -160,11 +169,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       isAdmin: !!user && user.role === "Admin",
       login,
       register,
+      googleSignIn,
       logout,
       refreshUser,
       setUser,
     }),
-    [token, user, login, register, logout, refreshUser, setUser]
+    [token, user, login, register, googleSignIn, logout, refreshUser, setUser]
   );
 
   return <AuthContext.Provider value={value}>{children}</AuthContext.Provider>;
