@@ -51,7 +51,7 @@ function TabsBar({
               </span>
               <span
                 className={`relative rounded-full px-1.5 py-0.5 font-mono text-[10px] font-semibold tabular-nums ${
-                  selected ? "bg-accent/20 text-accent-strong" : "bg-white/[0.05] text-ink-soft/70"
+                  selected ? "bg-accent/20 text-accent-strong" : "bg-ink/[0.05] text-ink-soft/70"
                 }`}
               >
                 {counts[cat.value]}
@@ -153,7 +153,7 @@ export function NewsFeed({ items }: { items: NewsItem[] }) {
               {ranked.length > 0 && (
                 <section>
                   <SectionHeading eyebrow="Tiêu điểm" title={`Nổi bật · ${categoryLabel}`} />
-                  <div className="rounded-[2rem] bg-gradient-to-b from-white/[0.04] to-transparent p-px">
+                  <div className="rounded-[2rem] bg-gradient-to-b from-hairline to-transparent p-px">
                     <div className="rounded-[calc(2rem-1px)] bg-surface px-6 py-1 sm:px-10">
                       {ranked.map((item, i) => (
                         <NewsRankedItem key={item.id} item={item} index={i} />

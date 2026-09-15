@@ -39,7 +39,7 @@ export function GameCard({ game }: { game: GameDto }) {
   return (
     <motion.div
       layout
-      className="group relative flex flex-col overflow-hidden rounded-xl border border-edge soft:border-edge-soft bg-surface transition-all duration-300 hover:border-accent/40 hover:shadow-[0_16px_50px_rgba(0,0,0,0.45)]"
+      className="group relative flex flex-col overflow-hidden rounded-xl border border-edge-soft bg-surface transition-all duration-300 hover:border-accent/40 hover:shadow-[0_16px_50px_rgba(0,0,0,0.45)]"
       whileHover={{ y: -6 }}
       transition={{ type: "spring", stiffness: 280, damping: 20 }}
     >
@@ -52,7 +52,7 @@ export function GameCard({ game }: { game: GameDto }) {
             sizes="(max-width: 640px) 50vw, (max-width: 1024px) 33vw, 25vw"
             className="object-cover transition-transform duration-500 group-hover:scale-[1.06]"
           />
-          <div className="absolute inset-0 bg-gradient-to-t from-surface via-transparent to-transparent opacity-60" />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/35 via-transparent to-transparent" />
           {game.discountPercent > 0 && (
             <span className="absolute top-3 left-3 rounded-md bg-accent px-2 py-0.5 text-xs font-bold text-gray-950">
               -{Math.round(game.discountPercent)}%

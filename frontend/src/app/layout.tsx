@@ -35,6 +35,11 @@ export default function RootLayout({
       className={`${outfit.variable} ${geistMono.variable} dark h-full`}
     >
       <body className="min-h-full flex flex-col bg-canvas text-ink font-sans">
+        <script
+          dangerouslySetInnerHTML={{
+            __html: `(function(){try{var t=localStorage.getItem("gamevault:theme");document.documentElement.classList.toggle("dark",t!=="light")}catch(e){document.documentElement.classList.add("dark")}})()`,
+          }}
+        />
         <Providers>
           <Navbar />
           <div className="flex-1 flex flex-col">{children}</div>

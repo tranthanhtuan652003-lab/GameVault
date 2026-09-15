@@ -9,9 +9,12 @@ import {
   User,
   MagnifyingGlass,
   SignOut,
+  Sun,
+  Moon,
 } from "@phosphor-icons/react";
 import { useAuth } from "@/lib/auth";
 import { useCart } from "@/lib/cart";
+import { useTheme } from "@/components/theme-provider";
 import { resolveAssetUrl } from "@/lib/api";
 import { cn } from "@/lib/cn";
 import { useState } from "react";
@@ -40,6 +43,7 @@ export function Navbar() {
   const router = useRouter();
   const { isAuthenticated, user, logout } = useAuth();
   const { count } = useCart();
+  const { theme, toggleTheme } = useTheme();
   const [menuOpen, setMenuOpen] = useState(false);
   const [searchOpen, setSearchOpen] = useState(false);
   const [q, setQ] = useState("");
@@ -88,6 +92,15 @@ export function Navbar() {
         </nav>
 
         <div className="ml-auto flex items-center gap-1">
+          <button
+            onClick={toggleTheme}
+            aria-label={theme === "dark" ? "Bật chế độ sáng" : "Bật chế độ tối"}
+            title={theme === "dark" ? "Chế độ sáng" : "Chế độ tối"}
+            className="flex h-10 w-10 items-center justify-center rounded-lg text-ink-soft transition hover:bg-surface-2 hover:text-ink"
+          >
+            {theme === "dark" ? <Sun size={20} /> : <Moon size={20} />}
+          </button>
+
           {searchOpen && (
             <form onSubmit={submitSearch} className="flex items-center">
               <input

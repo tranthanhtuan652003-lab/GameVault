@@ -97,7 +97,7 @@ export function BackendStatusProvider({ children }: { children: ReactNode }) {
             </h2>
 
             <p className="text-sm text-ink-soft mb-6 leading-relaxed">
-              Không thể kết nối tới máy chủ API (<code className="text-accent font-mono bg-surface-hover px-1.5 py-0.5 rounded">{API_URL}</code>).
+              Không thể kết nối tới máy chủ API (<code className="text-accent font-mono bg-surface-2 px-1.5 py-0.5 rounded">{API_URL}</code>).
               Toàn bộ dữ liệu hiển thị đã bị ngắt để đảm bảo tính toàn vẹn và tránh xung đột dữ liệu.
             </p>
 
@@ -113,7 +113,7 @@ export function BackendStatusProvider({ children }: { children: ReactNode }) {
             <button
               onClick={() => checkHealth()}
               disabled={isChecking}
-              className="w-full flex items-center justify-center gap-2 rounded-xl bg-accent px-5 py-3 text-sm font-bold text-white shadow-lg shadow-accent/25 hover:bg-accent-hover active:scale-[0.98] transition-all disabled:opacity-50"
+              className="w-full flex items-center justify-center gap-2 rounded-xl bg-accent px-5 py-3 text-sm font-bold text-gray-950 shadow-lg shadow-accent/25 hover:bg-accent-strong active:scale-[0.98] transition-all disabled:opacity-50"
             >
               <ArrowClockwise size={18} className={isChecking ? "animate-spin" : ""} />
               {isChecking ? "Đang kiểm tra kết nối..." : "Thử kết nối lại"}

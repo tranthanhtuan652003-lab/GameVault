@@ -62,7 +62,7 @@ function SourceBadge({ source }: { source: NewsItem["source"] }) {
 
 function NewsImageFallback() {
   return (
-    <div className="relative flex h-full w-full items-center justify-center bg-[radial-gradient(ellipse_at_center,rgba(16,185,129,0.08),transparent_65%),linear-gradient(145deg,#18181b_0%,#0b0b0d_100%)]">
+    <div className="relative flex h-full w-full items-center justify-center bg-[radial-gradient(ellipse_at_center,rgba(16,185,129,0.08),transparent_65%),linear-gradient(145deg,var(--color-surface-2)_0%,var(--color-surface)_100%)]">
       <Newspaper size={42} weight="duotone" className="text-ink/15" />
     </div>
   );
@@ -70,7 +70,7 @@ function NewsImageFallback() {
 
 function arrowButton() {
   return (
-    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-white/[0.08] transition-all duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] group-hover:translate-x-0.5 group-hover:-translate-y-0.5 group-hover:scale-105 group-hover:bg-gray-950 group-hover:text-white">      <ArrowUpRight size={14} weight="bold" />
+    <span className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full bg-ink/10 transition-all duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] group-hover:translate-x-0.5 group-hover:-translate-y-0.5 group-hover:scale-105 group-hover:bg-ink group-hover:text-canvas">      <ArrowUpRight size={14} weight="bold" />
     </span>
   );
 }
@@ -84,7 +84,7 @@ export function NewsCard({ item, index = 0 }: { item: NewsItem; index?: number }
       whileInView={{ opacity: 1, y: 0, filter: "blur(0px)" }}
       viewport={{ once: true, margin: "-60px" }}
       transition={{ duration: 0.7, delay: Math.min((index % 4) * 0.08, 0.4), ease: [0.32, 0.72, 0, 1] }}
-      className="group cursor-pointer rounded-[1.75rem] bg-gradient-to-b from-white/[0.06] to-white/[0.015] p-px shadow-[inset_0_1px_1px_rgba(255,255,255,0.06)]"
+      className="group cursor-pointer rounded-[1.75rem] bg-gradient-to-b from-hairline to-hairline/30 p-px shadow-[inset_0_1px_0_var(--color-hairline)]"
     >
       <a
         href={item.link}
@@ -105,7 +105,7 @@ export function NewsCard({ item, index = 0 }: { item: NewsItem; index?: number }
           ) : (
             <NewsImageFallback />
           )}
-          <div className="absolute inset-0 bg-gradient-to-t from-surface via-surface/10 to-transparent opacity-90" />
+          <div className="absolute inset-0 bg-gradient-to-t from-black/45 via-black/5 to-transparent" />
 
           <span className="absolute top-4 right-4 rounded-full border border-white/10 bg-black/50 px-2.5 py-1 font-mono text-[11px] font-semibold tracking-widest text-white/80 backdrop-blur-md">
             {num}
@@ -160,7 +160,7 @@ export function NewsRankedItem({ item, index = 0 }: { item: NewsItem; index?: nu
       transition={{ duration: 0.55, delay: Math.min(index * 0.06, 0.3), ease: [0.32, 0.72, 0, 1] }}
       className="group grid grid-cols-[3rem_1fr] items-center gap-4 border-b border-edge/50 py-5 transition-colors duration-500 hover:border-edge sm:grid-cols-[3.5rem_1fr_auto]"
     >
-      <span className="font-mono text-[2rem] leading-none font-extrabold tracking-tighter text-white/10 transition-colors duration-500 group-hover:text-accent/50 sm:text-4xl">
+      <span className="font-mono text-[2rem] leading-none font-extrabold tracking-tighter text-ghost transition-colors duration-500 group-hover:text-accent/50 sm:text-4xl">
         {num}
       </span>
 
@@ -178,7 +178,7 @@ export function NewsRankedItem({ item, index = 0 }: { item: NewsItem; index?: nu
       </div>
 
       <div className="hidden sm:block">
-        <div className="relative h-16 w-24 overflow-hidden rounded-lg bg-surface-2 ring-1 ring-white/10">
+        <div className="relative h-16 w-24 overflow-hidden rounded-lg bg-surface-2 ring-1 ring-hairline-strong">
           {item.image ? (
             <Image
               src={item.image}
@@ -202,7 +202,7 @@ export function FeaturedNewsCard({ item }: { item: NewsItem }) {
       initial={{ opacity: 0, y: 40, filter: "blur(8px)" }}
       animate={{ opacity: 1, y: 0, filter: "blur(0px)" }}
       transition={{ duration: 0.8, ease: [0.32, 0.72, 0, 1] }}
-      className="rounded-[2rem] bg-gradient-to-b from-white/[0.08] to-white/[0.02] p-px shadow-[inset_0_1px_1px_rgba(255,255,255,0.08)]"
+      className="rounded-[2rem] bg-gradient-to-b from-hairline to-hairline/25 p-px shadow-[inset_0_1px_0_var(--color-hairline)]"
     >
       <a
         href={item.link}
@@ -257,7 +257,7 @@ export function FeaturedNewsCard({ item }: { item: NewsItem }) {
             </p>
           )}
 
-          <span className="mt-2 inline-flex w-fit items-center gap-3 rounded-full bg-white/[0.04] py-1.5 pr-1.5 pl-6 text-sm font-semibold text-ink ring-1 ring-white/10 transition-all duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] group-hover:bg-accent group-hover:text-gray-950 group-hover:ring-accent">
+          <span className="mt-2 inline-flex w-fit items-center gap-3 rounded-full bg-ink/[0.04] py-1.5 pr-1.5 pl-6 text-sm font-semibold text-ink ring-1 ring-hairline-strong transition-all duration-500 ease-[cubic-bezier(0.32,0.72,0,1)] group-hover:bg-accent group-hover:text-gray-950 group-hover:ring-accent">
             Đọc bài viết đầy đủ
             {arrowButton()}
           </span>

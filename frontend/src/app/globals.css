@@ -6,6 +6,37 @@
   --font-sans: var(--font-outfit), ui-sans-serif, system-ui, sans-serif;
   --font-mono: var(--font-geist-mono), ui-monospace, monospace;
 
+  /* Light (default) — soft, warm-neutral, low glare */
+  --color-canvas: #f5f4f2;
+  --color-surface: #fbfaf8;
+  --color-surface-2: #efeeea;
+  --color-edge: #e5e3de;
+  --color-edge-soft: #ecebe7;
+
+  --color-ink: #1a1a1d;
+  --color-ink-soft: #5b5b63;
+
+  --color-accent: #10b981;
+  --color-accent-strong: #059669;
+  --color-accent-soft: rgba(16, 185, 129, 0.12);
+
+  --color-danger: #dc2626;
+
+  --color-hairline: rgba(26, 24, 18, 0.05);
+  --color-hairline-strong: rgba(26, 24, 18, 0.11);
+  --color-ghost: rgba(26, 24, 18, 0.08);
+}
+
+:root {
+  --background: #f5f4f2;
+  --foreground: #1a1a1d;
+}
+
+html {
+  color-scheme: light;
+}
+
+.dark {
   --color-canvas: #09090b;
   --color-surface: #111113;
   --color-surface-2: #18181b;
@@ -20,14 +51,16 @@
   --color-accent-soft: rgba(16, 185, 129, 0.14);
 
   --color-danger: #f87171;
-}
 
-:root {
+  --color-hairline: rgba(255, 255, 255, 0.06);
+  --color-hairline-strong: rgba(255, 255, 255, 0.12);
+  --color-ghost: rgba(255, 255, 255, 0.12);
+
   --background: #09090b;
   --foreground: #fafafa;
 }
 
-html {
+html.dark {
   color-scheme: dark;
 }
 
@@ -47,7 +80,7 @@ body {
 /* Slim scrollbars */
 * {
   scrollbar-width: thin;
-  scrollbar-color: #3f3f46 translucent;
+  scrollbar-color: var(--color-edge) transparent;
 }
 
 /* Reusable utilities */
@@ -94,7 +127,7 @@ body {
   background: linear-gradient(
     90deg,
     transparent,
-    rgba(255, 255, 255, 0.06),
+    var(--color-hairline),
     transparent
   );
   animation: shimmer 1.6s infinite;
