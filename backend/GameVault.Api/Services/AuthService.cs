@@ -127,7 +127,15 @@ public class AuthService : IAuthService
             return (false, "Token Google không hợp lệ.", null);
 
         var email = root.TryGetProperty("email", out var emailEl) ? emailEl.GetString()?.ToLowerInvariant() : null;
-        var emailVerified = root.TryGetProperty("email_verified", out var evEl) && evEl.GetBoolean();
+        // Google tokeninfo endpoint trả "email_verified" dạng chuỗi "true"/"false" (đôi khi là boolean thật)
+        var emailVerified = false;
+        if (root.TryGetProperty("email_verified", out var evEl))
+        {
+            if (evEl.ValueKind == JsonValueKind.True)
+                emailVerified = true;
+            else if (evEl.ValueKind == JsonValueKind.String)
+                emailVerified = string.Equals(evEl.GetString(), "true", StringComparison.OrdinalIgnoreCase);
+        }
         if (string.IsNullOrWhiteSpace(email) || !emailVerified)
             return (false, "Email Google chưa được xác minh.", null);
 
