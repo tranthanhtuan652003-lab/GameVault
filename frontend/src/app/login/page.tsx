@@ -1,6 +1,6 @@
 "use client";
 
-import { Suspense, useState } from "react";
+import { Suspense, useCallback, useEffect, useRef, useState } from "react";
 import { useRouter, useSearchParams } from "next/navigation";
 import Link from "next/link";
 import { GameController, Eye, EyeSlash } from "@phosphor-icons/react";
@@ -20,13 +20,82 @@ export default function LoginPage() {
 function LoginForm() {
   const router = useRouter();
   const searchParams = useSearchParams();
-  const { login } = useAuth();
+  const { login, googleSignIn } = useAuth();
   const { toast } = useToast();
 
   const [userName, setUserName] = useState("");
   const [password, setPassword] = useState("");
   const [showPw, setShowPw] = useState(false);
   const [loading, setLoading] = useState(false);
+
+  const googleClientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || "";
+
+  const handleGoogleCredential = useCallback(
+    async (response: { credential?: string }) => {
+      if (!response?.credential) return;
+      setLoading(true);
+      try {
+        await googleSignIn(response.credential);
+        toast("Đăng nhập bằng Google thành công");
+        const redirectParam = searchParams.get("redirect");
+        const redirect =
+          redirectParam && /^\/(?![/\\])/.test(redirectParam) ? redirectParam : "/";
+        router.push(redirect);
+      } catch (err) {
+        const msg =
+          err instanceof ApiError ? err.message : "Đăng nhập Google thất bại";
+        toast(msg, "error");
+      } finally {
+        setLoading(false);
+      }
+    },
+    [googleSignIn, router, searchParams, toast]
+  );
+
+  const credentialRef = useRef(handleGoogleCredential);
+  credentialRef.current = handleGoogleCredential;
+
+  useEffect(() => {
+    if (!googleClientId) return;
+    let cancelled = false;
+
+    const initGoogle = () => {
+      if (cancelled) return;
+      const g = (window as any).google;
+      if (!g?.accounts?.id) return;
+      g.accounts.id.initialize({
+        client_id: googleClientId,
+        callback: (resp: { credential?: string }) => credentialRef.current(resp),
+        auto_select: false,
+      });
+      const el = document.getElementById("google-signin-btn-login");
+      if (el) {
+        g.accounts.id.renderButton(el, {
+          type: "standard",
+          theme: "outline",
+          size: "large",
+          shape: "pill",
+          width: 320,
+        });
+      }
+    };
+
+    if ((window as any).google?.accounts?.id) {
+      initGoogle();
+      return;
+    }
+
+    const script = document.createElement("script");
+    script.src = "https://accounts.google.com/gsi/client";
+    script.async = true;
+    script.defer = true;
+    script.onload = initGoogle;
+    document.head.appendChild(script);
+
+    return () => {
+      cancelled = true;
+    };
+  }, [googleClientId]);
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -59,6 +128,20 @@ function LoginForm() {
             Đăng nhập để tiếp tục khám phá kho game của bạn
           </p>
         </div>
+
+        {googleClientId && (
+          <div className="mb-6">
+            <div
+              id="google-signin-btn-login"
+              className="flex justify-center"
+            />
+            <div className="my-5 flex items-center gap-3 text-[11px] font-semibold uppercase tracking-wider text-ink-soft">
+              <span className="h-px flex-1 bg-edge" />
+              Hoặc
+              <span className="h-px flex-1 bg-edge" />
+            </div>
+          </div>
+        )}
 
         <form
           onSubmit={submit}
