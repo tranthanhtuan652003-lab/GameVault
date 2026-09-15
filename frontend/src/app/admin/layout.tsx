@@ -1,6 +1,6 @@
 "use client";
 
-import { useEffect } from "react";
+import { useEffect, useState } from "react";
 import { usePathname, useRouter } from "next/navigation";
 import Link from "next/link";
 import {
@@ -34,17 +34,23 @@ export default function AdminLayout({
   const { isAdmin, isAuthenticated, logout } = useAuth();
   const router = useRouter();
   const pathname = usePathname();
+  const [mounted, setMounted] = useState(false);
 
   useEffect(() => {
+    setMounted(true);
+  }, []);
+
+  useEffect(() => {
+    if (!mounted) return;
     if (isAuthenticated && !isAdmin) {
       router.replace("/");
     }
     if (!isAuthenticated) {
       router.replace("/login?redirect=/admin");
     }
-  }, [isAdmin, isAuthenticated, router]);
+  }, [isAdmin, isAuthenticated, router, mounted]);
 
-  if (!isAuthenticated || !isAdmin) {
+  if (!mounted || !isAuthenticated || !isAdmin) {
     return (
       <div className="flex flex-1 items-center justify-center py-24 text-ink-soft">
         Đang kiểm tra quyền truy cập...
