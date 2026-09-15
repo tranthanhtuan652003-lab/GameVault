@@ -3,7 +3,6 @@ using GameVault.Api.Helpers;
 using GameVault.Api.Services;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
-using Microsoft.Extensions.Options;
 
 namespace GameVault.Api.Controllers;
 
@@ -14,18 +13,15 @@ public class PaymentController : ControllerBase
     private readonly IOrderService _orders;
     private readonly IBankTransferService _bankTransfer;
     private readonly IMoMoService _moMo;
-    private readonly MoMoOptions _moMoOptions;
 
     public PaymentController(
         IOrderService orders,
         IBankTransferService bankTransfer,
-        IMoMoService moMo,
-        IOptions<MoMoOptions> moMoOptions)
+        IMoMoService moMo)
     {
         _orders = orders;
         _bankTransfer = bankTransfer;
         _moMo = moMo;
-        _moMoOptions = moMoOptions.Value;
     }
 
     [Authorize]
@@ -58,7 +54,7 @@ public class PaymentController : ControllerBase
         if (order.PaymentMethod != "MoMo") return BadRequest(Res.Fail("Đơn hàng không phải thanh toán MoMo."));
         if (order.PaymentStatus == "Paid") return BadRequest(Res.Fail("Đơn hàng đã được thanh toán."));
 
-        var amountVnd = ConvertToVnd(order.Total);
+        var amountVnd = (long)decimal.Round(order.Total, 0);
         var orderInfo = $"GameVault {order.OrderNumber}";
         var result = await _moMo.CreatePaymentAsync(orderId, amountVnd, orderInfo);
 
@@ -130,10 +126,4 @@ public class PaymentController : ControllerBase
     }
 
     private int GetUserId() => int.Parse(User.FindFirstValue(ClaimTypes.NameIdentifier)!);
-
-    private long ConvertToVnd(decimal usd)
-    {
-        var rate = _moMoOptions.ExchangeRateUsdToVnd > 0 ? _moMoOptions.ExchangeRateUsdToVnd : 25000;
-        return (long)decimal.Round(usd * rate, 0);
-    }
 }

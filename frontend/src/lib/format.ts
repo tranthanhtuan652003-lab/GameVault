@@ -1,13 +1,14 @@
 export function formatPrice(value: number): string {
   return new Intl.NumberFormat("vi-VN", {
     style: "currency",
-    currency: "USD",
-    minimumFractionDigits: value % 1 === 0 ? 0 : 2,
+    currency: "VND",
+    minimumFractionDigits: 0,
+    maximumFractionDigits: 0,
   }).format(value);
 }
 
 export function formatCompactPrice(value: number): string {
-  return `$${value.toFixed(value % 1 === 0 ? 0 : 2)}`;
+  return formatPrice(value);
 }
 
 export function formatRating(value: number): string {

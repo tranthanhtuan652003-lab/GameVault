@@ -3,29 +3,30 @@ import { formatPrice, formatCompactPrice, formatRating, formatDate, formatDateTi
 
 describe("formatPrice", () => {
   it("formats whole numbers without decimals", () => {
-    const out = formatPrice(60);
-    expect(out).toContain("60");
-    expect(out).toContain("US$");
+    const out = formatPrice(1500000);
+    expect(out).toContain("1.500.000");
+    expect(out).toContain("₫");
   });
 
-  it("formats decimals with two places", () => {
-    const out = formatPrice(29.99);
-    expect(out).toContain("29,99");
-    expect(out).toContain("US$");
+  it("formats decimals rounded to whole VND", () => {
+    const out = formatPrice(299000);
+    expect(out).toContain("299.000");
+    expect(out).toContain("₫");
   });
 });
 
 describe("formatCompactPrice", () => {
-  it("formats whole numbers without decimals", () => {
-    expect(formatCompactPrice(120)).toBe("$120");
+  it("formats whole numbers in VND", () => {
+    expect(formatCompactPrice(1500000)).toContain("1.500.000");
+    expect(formatCompactPrice(1500000)).toContain("₫");
   });
 
-  it("formats sub-dollar values with two places", () => {
-    expect(formatCompactPrice(0.5)).toBe("$0.50");
+  it("formats sub-thousand VND values", () => {
+    expect(formatCompactPrice(500000)).toContain("500.000");
   });
 
-  it("keeps two decimals for non-integers", () => {
-    expect(formatCompactPrice(29.99)).toBe("$29.99");
+  it("renders without US$ symbol", () => {
+    expect(formatCompactPrice(299000)).not.toContain("$");
   });
 });
 

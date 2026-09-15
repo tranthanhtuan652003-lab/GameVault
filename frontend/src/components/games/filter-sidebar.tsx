@@ -7,10 +7,10 @@ import { cn } from "@/lib/cn";
 
 const priceRanges = [
   { label: "Tất cả", min: undefined, max: undefined },
-  { label: "Dưới $20", min: undefined, max: 20 },
-  { label: "$20 - $50", min: 20, max: 50 },
-  { label: "$50 - $100", min: 50, max: 100 },
-  { label: "Trên $100", min: 100, max: undefined },
+  { label: "Dưới 500.000 ₫", min: undefined, max: 500000 },
+  { label: "500.000 - 1.250.000 ₫", min: 500000, max: 1250000 },
+  { label: "1.250.000 - 2.500.000 ₫", min: 1250000, max: 2500000 },
+  { label: "Trên 2.500.000 ₫", min: 2500000, max: undefined },
 ];
 
 export function Filters({

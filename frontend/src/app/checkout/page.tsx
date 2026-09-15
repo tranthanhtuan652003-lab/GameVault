@@ -232,7 +232,7 @@ export default function CheckoutPage() {
                 <ul className="list-disc space-y-1 pl-5 text-ink-soft">
                   <li>Bạn sẽ được chuyển hướng tới ứng dụng Ví MoMo để thanh toán.</li>
                   <li>Hỗ trợ quét mã QR, tài khoản MoMo, thẻ ATM nội địa.</li>
-                  <li>Số tiền được quy đổi sang VND theo tỷ giá cấu hình.</li>
+                  <li>Số tiền thanh toán tính bằng VNĐ.</li>
                 </ul>
               </div>
             )}
