@@ -69,7 +69,7 @@ public class OrderServiceTests
         Assert.Equal(144.99m, order.Subtotal);
         Assert.Equal(60.02m, order.Discount);
         Assert.Equal(84.97m, order.Total);
-        Assert.Equal("Pending", order.Status);
+        Assert.Equal("Completed", order.Status);
     }
 
     [Fact]
@@ -123,7 +123,7 @@ public class OrderServiceTests
     }
 
     [Fact]
-    public async Task CreateOrder_DemoPayment_WaitsForAdminConfirmBeforeDeliveringKeys()
+    public async Task CreateOrder_DemoPayment_DeliversKeysImmediately()
     {
         using var db = new TestDb();
         var fx = await BuildSimpleOrderAsync(db);
@@ -132,23 +132,19 @@ public class OrderServiceTests
         Assert.True(res.Success, res.Error);
         var order = res.Order!;
         Assert.Equal("Paid", order.PaymentStatus);
+        Assert.Equal("Completed", order.Status);
 
-        // Tạo đơn chưa cấp key: admin chưa xác nhận thì đơn không có key nào
+        // Thanh toán demo thành công: key được cấp ngay, không cần admin xác nhận
         var cyber = order.Items.Single(i => i.GameTitle == "Cyberpunk 2077");
-        Assert.Empty(cyber.Keys);
-        Assert.Empty(order.Items.Single(i => i.GameTitle == "Hades").Keys);
-        Assert.Equal(0, db.Db.GameKeys.Count(k => k.GameId == 1 && k.Status == "Sold"));
-
-        // Sau khi admin xác nhận xử lý -> key được cấp theo đúng Quantity
-        var (deliverOk, deliverErr) = await fx.OrderSvc.DeliverKeysForPaidOrderAsync(order.Id);
-        Assert.True(deliverOk, deliverErr);
-        var after = await fx.OrderSvc.GetOrderAsync(fx.UserId, order.Id, true);
-        var cyber2 = after!.Items.Single(i => i.GameTitle == "Cyberpunk 2077");
-        Assert.Equal(2, cyber2.Keys.Count);
-        Assert.Single(after.Items.Single(i => i.GameTitle == "Hades").Keys);
-        Assert.Distinct(cyber2.Keys);
-        Assert.All(cyber2.Keys, k => Assert.Contains("-", k));
+        Assert.Equal(2, cyber.Keys.Count);
+        Assert.Single(order.Items.Single(i => i.GameTitle == "Hades").Keys);
+        Assert.Distinct(cyber.Keys);
+        Assert.All(cyber.Keys, k => Assert.Contains("-", k));
         Assert.Equal(2, db.Db.GameKeys.Count(k => k.GameId == 1 && k.Status == "Sold"));
+
+        // Giỏ hàng đã được xóa sau khi thanh toán xong
+        var cart = await fx.CartSvc.GetCartAsync(fx.UserId);
+        Assert.Empty(cart.Items);
     }
 
     [Fact]
@@ -198,32 +194,56 @@ public class OrderServiceTests
     }
 
     [Fact]
-    public async Task KeysOnlyDeliveredWhenAdminMarksOrderCompleted()
+    public async Task KeysDeliveredWhenBankTransferConfirmedByAdmin()
     {
         using var db = new TestDb();
         var fx = await BuildSimpleOrderAsync(db);
-        var order = (await fx.OrderSvc.CreateFromCartAsync(fx.UserId, NewOrder())).Order!;
-        var adminSvc = new AdminService(db.Db, fx.OrderSvc);
+        var order = (await fx.OrderSvc.CreateFromCartAsync(fx.UserId, NewOrder("BankTransfer"))).Order!;
 
-        // Đang xử lý => chưa được cấp key
-        var processing = await adminSvc.UpdateOrderStatusAsync(order.Id, "Processing");
-        Assert.True(processing.Success);
-        var atProcessing = await fx.OrderSvc.GetOrderAsync(fx.UserId, order.Id, true);
-        Assert.Equal(0, atProcessing!.Items.Sum(i => i.Keys.Count));
+        // Chờ admin xác nhận tiền về -> chưa có key
+        Assert.Equal("Pending", order.PaymentStatus);
+        Assert.Equal(0, order.Items.Sum(i => i.Keys.Count));
 
-        // Hoàn thành => key được cấp đúng theo số lượng
-        var completed = await adminSvc.UpdateOrderStatusAsync(order.Id, "Completed");
-        Assert.True(completed.Success);
-        var atCompleted = await fx.OrderSvc.GetOrderAsync(fx.UserId, order.Id, true);
-        Assert.Equal(3, atCompleted!.Items.Sum(i => i.Keys.Count));
+        // Admin xác nhận -> key được cấp đúng theo số lượng, đơn được xử lý
+        var ok = await fx.OrderSvc.ConfirmBankTransferAsync(order.Id, fx.UserId);
+        Assert.True(ok.Success, ok.Error);
+        var done = await fx.OrderSvc.GetOrderAsync(fx.UserId, order.Id, true);
+        Assert.Equal("Processing", done!.Status);
+        Assert.Equal(3, done.Items.Sum(i => i.Keys.Count));
     }
 
-    private static CreateOrderRequest NewOrder() => new()
+    [Fact]
+    public async Task CreateOrder_MoMo_KeepsCartAndDoesNotBumpSales()
+    {
+        using var db = new TestDb();
+        var fx = await BuildSimpleOrderAsync(db);
+        var game1 = db.Db.Games.Single(g => g.Id == 1);
+
+        var res = await fx.OrderSvc.CreateFromCartAsync(fx.UserId, NewOrder("MoMo"));
+        Assert.True(res.Success, res.Error);
+        var order = res.Order!;
+        Assert.Equal("Pending", order.Status);
+        Assert.Equal("Pending", order.PaymentStatus);
+        Assert.Empty(order.Items.SelectMany(i => i.Keys));
+
+        // Giỏ hàng KHÔNG bị xóa khi khởi tạo MoMo (chỉ xóa khi thanh toán thành công)
+        var cart = await fx.CartSvc.GetCartAsync(fx.UserId);
+        Assert.Equal(2, cart.Items.Count);
+
+        // SalesCount chưa tăng
+        Assert.Equal(0, game1.SalesCount);
+
+        // Đơn intent chưa hiện trong danh sách đơn của user
+        var list = await fx.OrderSvc.GetUserOrdersAsync(fx.UserId);
+        Assert.Empty(list);
+    }
+
+    private static CreateOrderRequest NewOrder(string paymentMethod = "Demo") => new()
     {
         CustomerName = "Test Buyer",
         Email = "buyer@test.com",
         Phone = "0901234567",
         Address = "123 Main St",
-        PaymentMethod = "Demo"
+        PaymentMethod = paymentMethod
     };
 }

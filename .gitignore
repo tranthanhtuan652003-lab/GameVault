@@ -12,3 +12,6 @@ Thumbs.db
 
 # Runtime / uploads
 **/wwwroot/uploads/
+
+# build log
+frontend/build-log.txt

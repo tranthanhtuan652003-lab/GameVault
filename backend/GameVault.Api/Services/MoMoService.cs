@@ -24,6 +24,7 @@ public class MoMoCallbackResult
     public bool Verified { get; set; }      // chữ ký MoMo hợp lệ
     public bool Success { get; set; }       // giao dịch thành công (resultCode = 0)
     public int OrderId { get; set; }
+    public string OrderNumber { get; set; } = string.Empty;   // mã đơn hàng (GV-...)
     public string TransId { get; set; } = string.Empty;
     public string RequestId { get; set; } = string.Empty;
     public string ResultCode { get; set; } = string.Empty;
@@ -66,6 +67,14 @@ public class MoMoService : IMoMoService
         _options.SecretKey.StartsWith("YOUR_", StringComparison.OrdinalIgnoreCase) ||
         _options.AccessKey == "YOUR_MOMO_ACCESS_KEY" ||
         _options.PartnerCode == "YOUR_MOMO_PARTNER_CODE";
+
+    // Gateway MoMo TEST/sandbox: QR chỉ quét được bằng hệ thống test, không phải
+    // app MoMo thật -> cho phép mô phỏng thanh toán để demo không bị kẹt.
+    // Cổng production (không chứa "test" / không đuôi "_TEST") sẽ luôn khoá tính năng này.
+    private bool IsSandboxGateway =>
+        IsSimulationMode ||
+        _options.Endpoint.Contains("test", StringComparison.OrdinalIgnoreCase) ||
+        _options.PartnerCode.EndsWith("_TEST", StringComparison.OrdinalIgnoreCase);
 
     public async Task<(bool Success, string? Error, string? PayUrl, bool IsSimulation)> CreatePaymentAsync(
         int orderId, decimal amountVnd, string orderInfo, string requestType = "captureWallet")
@@ -193,12 +202,11 @@ public class MoMoService : IMoMoService
         payment.MoMoRequestId = callbackResult.RequestId;
         payment.PaidAt = DateTime.UtcNow;
 
-        order.PaymentStatus = "Paid";
-        order.PaidAt = DateTime.UtcNow;
-        order.Status = "Processing";
+        await _db.SaveChangesAsync();
 
-        var (deliverOk, deliverErr) = await _orders.DeliverKeysForPaidOrderAsync(order.Id);
-        if (!deliverOk) return (false, deliverErr);
+        // Hoàn tất tự động: Paid + Completed + xuất key + xóa giỏ hàng. Idempotent.
+        var (finished, finishErr) = await _orders.CompletePaidOrderAsync(order.Id, bumpSales: true);
+        if (!finished) return (false, finishErr);
 
         return (true, null);
     }
@@ -216,7 +224,12 @@ public class MoMoService : IMoMoService
             .Include(o => o.Payments)
             .FirstOrDefaultAsync(o => o.Id == callbackResult.OrderId);
 
-        if (order == null) return (false, "Không tìm thấy đơn hàng.", callbackResult);
+        // Đơn không tồn tại (callback thất bại trước đã xoá, hoặc gd không được khởi tạo):
+        // mã thất bại => coi như đã xử lý; mã thành công => lỗi nghiêm trọng cần kiểm tra.
+        if (order == null)
+            return callbackResult.Success
+                ? (false, "Không tìm thấy đơn hàng.", callbackResult)
+                : (true, null, callbackResult);
 
         var payment = order.Payments.FirstOrDefault(p => p.Method == "MoMo");
         if (payment == null) return (false, "Đơn hàng không phải thanh toán MoMo.", callbackResult);
@@ -228,25 +241,36 @@ public class MoMoService : IMoMoService
 
         if (callbackResult.Success)
         {
+            // Thanh toán thành công -> hoàn tất tự động: Paid + Completed + xuất key
+            // + xóa giỏ hàng. Không cần admin xử lý gì thêm.
+            callbackResult.OrderNumber = order.OrderNumber;
             payment.Status = "Paid";
             payment.TransactionId = $"MOMO-{callbackResult.TransId}";
             payment.PaidAt = DateTime.UtcNow;
-            order.PaymentStatus = "Paid";
-            order.PaidAt = DateTime.UtcNow;
-            order.Status = "Processing";
+            await _db.SaveChangesAsync();
 
-            var (deliverOk, deliverErr) = await _orders.DeliverKeysForPaidOrderAsync(order.Id);
-            if (!deliverOk) return (false, deliverErr, callbackResult);
+            var (finished, finishErr) = await _orders.CompletePaidOrderAsync(order.Id, bumpSales: true);
+            if (!finished) return (false, finishErr, callbackResult);
+        }
+        else if (callbackResult.ResultCode == "1001")
+        {
+            // Trường hợp hiếm "treo tiền" (MoMo đang xử lý): giữ đơn ở trạng thái đang
+            // xử lý KHÔNG xuất key; IPN của MoMo sẽ hoàn tất hoặc huỷ sau.
+            callbackResult.OrderNumber = order.OrderNumber;
+            payment.Status = "Pending";
+            payment.TransactionId = $"MOMO-{callbackResult.TransId}";
+            order.PaymentStatus = "Pending";
+            order.Status = "Processing";
+            await _db.SaveChangesAsync();
         }
         else
         {
-            payment.Status = "Failed";
-            payment.TransactionId = $"MOMO-{callbackResult.TransId}";
-            order.PaymentStatus = "Failed";
-            order.Status = "Cancelled";
+            // Thất bại / huỷ: KHÔNG tạo đơn hàng -> xóa đơn intent để user quay lại
+            // thanh toán; giỏ hàng được giữ nguyên vẹn.
+            _db.Orders.Remove(order);
+            await _db.SaveChangesAsync();
         }
 
-        await _db.SaveChangesAsync();
         return (true, null, callbackResult);
     }
 
@@ -254,8 +278,8 @@ public class MoMoService : IMoMoService
     // CHỈ khả dụng khi chưa cấu hình key thật — tránh tự xác nhận đơn không qua MoMo.
     public async Task<(bool Success, string? Error)> SimulateConfirmAsync(int orderId, int userId)
     {
-        if (!IsSimulationMode)
-            return (false, "Không thể mô phỏng khi đã cấu hình MoMo thật.");
+        if (!IsSandboxGateway)
+            return (false, "Chỉ gateway test/sandbox mới cho phép mô phỏng thanh toán.");
 
         var order = await _db.Orders
             .Include(o => o.Payments)
@@ -273,12 +297,10 @@ public class MoMoService : IMoMoService
         payment.MoMoPayType = "Simulation";
         payment.PaidAt = DateTime.UtcNow;
 
-        order.PaymentStatus = "Paid";
-        order.PaidAt = DateTime.UtcNow;
-        order.Status = "Processing";
+        await _db.SaveChangesAsync();
 
-        var (deliverOk, deliverErr) = await _orders.DeliverKeysForPaidOrderAsync(order.Id);
-        if (!deliverOk) return (false, deliverErr);
+        var (finished, finishErr) = await _orders.CompletePaidOrderAsync(order.Id, bumpSales: true);
+        if (!finished) return (false, finishErr);
 
         return (true, null);
     }
@@ -288,7 +310,9 @@ public class MoMoService : IMoMoService
     {
         var parts = new[]
         {
-            ("accessKey", GetValue(parameters, "accessKey")),
+            // accessKey luôn lấy từ cấu hình merchant (MoMo KHÔNG gửi accessKey trong
+            // query redirect/IPN) - nếu đọc từ query sẽ ra chuỗi rỗng và lệch chữ ký.
+            ("accessKey", _options.AccessKey),
             ("amount", GetValue(parameters, "amount")),
             ("extraData", GetValue(parameters, "extraData")),
             ("message", GetValue(parameters, "message")),

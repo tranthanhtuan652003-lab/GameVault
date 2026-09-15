@@ -61,7 +61,30 @@ export default function CheckoutPage() {
     );
   }
 
-  if (order) {
+  // MoMo: đơn mới chỉ là intent (chưa thu tiền) -> không được báo thành công.
+  // Hiển thị trạng thái chờ cho tới khi redirect sang MoMo hoàn tất.
+  if (order && paymentMethod === "MoMo") {
+    return (
+      <div className="container-page flex flex-col items-center justify-center py-28 text-center">
+        <div className="h-16 w-16 animate-spin rounded-full border-4 border-edge border-t-accent" />
+        <h1 className="mt-6 text-3xl font-extrabold text-ink">Đang chờ thanh toán MoMo</h1>
+        <p className="mt-3 max-w-md text-ink-soft">
+          Vui lòng hoàn tất thanh toán trong cửa sổ MoMo. Đơn hàng chỉ được tạo
+          khi thanh toán thành công — nếu hủy hoặc thất bại, giỏ hàng của bạn sẽ
+          được giữ nguyên để thanh toán lại.
+        </p>
+        <Clock size={28} weight="fill" className="mt-6 text-accent" />
+        <div className="mt-8 flex flex-col gap-3 sm:flex-row">
+          <Button variant="ghost" onClick={() => router.push("/checkout")}>
+            Quay lại thanh toán
+          </Button>
+        </div>
+      </div>
+    );
+  }
+
+  // Chỉ thanh toán Demo (ngay lập tức) mới hiển thị màn hình thành công.
+  if (order && paymentMethod === "Demo") {
     return (
       <div className="container-page flex flex-col items-center justify-center py-28 text-center">
         <span className="flex h-20 w-20 items-center justify-center rounded-full bg-accent/15 text-accent">
@@ -76,8 +99,7 @@ export default function CheckoutPage() {
         </p>
         <p className="mt-2 flex items-center justify-center gap-1.5 text-sm text-ink-soft">
           <CheckCircle size={16} weight="fill" className="text-accent" />
-          Key kích hoạt Steam sẽ được hiển thị trong đơn hàng sau khi cửa hàng xác nhận
-          thanh toán.
+          Key kích hoạt Steam đã được thêm vào đơn hàng của bạn.
         </p>
         <div className="mt-8 flex flex-col gap-3 sm:flex-row">
           <Button onClick={() => router.push("/account")}>Xem đơn hàng</Button>
@@ -117,6 +139,8 @@ export default function CheckoutPage() {
       }
       await refreshCart();
     } catch (err) {
+      // Giữ lại trang thanh toán (đặc biệt MoMo nếu tạo URL thanh toán thất bại)
+      setOrder(null);
       const msg =
         err instanceof ApiError ? err.message : "Có lỗi xảy ra khi thanh toán";
       toast(msg, "error");

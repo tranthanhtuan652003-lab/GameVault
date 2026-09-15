@@ -81,22 +81,12 @@ public static class DbSeeder
 
         foreach (var spec in SteamGames)
         {
-            var existing = await db.Games
-                .Include(g => g.GameGenres)
-                .Include(g => g.GamePlatforms)
-                .Include(g => g.GameDevelopers)
-                .Include(g => g.GamePublishers)
-                .Include(g => g.GameImages)
-                .FirstOrDefaultAsync(g => g.Title == spec.Title);
-
-            if (existing == null)
-            {
+            // INSERT-ONLY: game đã tồn tại (kể cả khi user đã chỉnh sửa) KHÔNG được
+            // ghi đè lại theo seed khi restart — nếu không mọi thay đổi giá/mô tả/...
+            // trong admin sẽ bị khôi phục về bản cũ mỗi lần backend chạy lại.
+            var exists = await db.Games.AnyAsync(g => g.Title == spec.Title);
+            if (!exists)
                 BuildSteamGame(db, spec, genreMap, platformMap, devMap, pubMap);
-            }
-            else
-            {
-                UpsertSteamGame(existing, spec, genreMap, platformMap, devMap, pubMap);
-            }
         }
 
         await db.SaveChangesAsync();
@@ -158,46 +148,6 @@ public static class DbSeeder
         db.Games.Add(game);
     }
 
-    // Cập nhật game đã tồn tại (thường là game user tự thêm) cho khớp format seed Steam.
-    private static void UpsertSteamGame(Game game, SteamSeedSpec spec,
-        Dictionary<string, Genre> genreMap,
-        Dictionary<string, Platform> platformMap,
-        Dictionary<string, Developer> devMap,
-        Dictionary<string, Publisher> pubMap)
-    {
-        game.Description = spec.Description;
-        game.Price = spec.Price;
-        game.DiscountPrice = spec.DiscountPrice;
-        game.Rating = spec.Rating;
-        game.RatingCount = spec.RatingCount;
-        game.ReleaseDate = DateTime.SpecifyKind(
-            new DateTime(spec.ReleaseYear, spec.ReleaseMonth, spec.ReleaseDay), DateTimeKind.Utc);
-        game.CoverImage = SteamCover(spec.AppId, "header.jpg");
-        if (!IsUsableTrailer(game.TrailerUrl))
-            game.TrailerUrl = SteamTrailer(spec.Title);
-        game.SystemRequirements = spec.SystemRequirements;
-        game.SalesCount = spec.SalesCount;
-        game.IsActive = true;
-
-        SyncJunctions(game.GameGenres, spec.Genres.Select(n => genreMap[n].Id),
-            id => new GameGenre { GenreId = id }, e => e.GenreId);
-        SyncJunctions(game.GamePlatforms, spec.Platforms.Select(n => platformMap[n].Id),
-            id => new GamePlatform { PlatformId = id }, e => e.PlatformId);
-        SyncJunctions(game.GameDevelopers, spec.Developers.Select(n => devMap[n].Id),
-            id => new GameDeveloper { DeveloperId = id }, e => e.DeveloperId);
-        SyncJunctions(game.GamePublishers, spec.Publishers.Select(n => pubMap[n].Id),
-            id => new GamePublisher { PublisherId = id }, e => e.PublisherId);
-
-        var wantedImages = SteamImageFiles()
-            .Select(f => SteamCover(spec.AppId, f))
-            .ToHashSet(StringComparer.OrdinalIgnoreCase);
-        var staleImages = game.GameImages.Where(i => !wantedImages.Contains(i.ImageUrl)).ToList();
-        foreach (var image in staleImages) game.GameImages.Remove(image);
-        var haveImages = game.GameImages.Select(i => i.ImageUrl).ToHashSet(StringComparer.OrdinalIgnoreCase);
-        foreach (var url in wantedImages.Where(u => !haveImages.Contains(u)))
-            game.GameImages.Add(new GameImage { ImageUrl = url, IsCover = false });
-    }
-
     private static void AddSteamRelations(Game game, SteamSeedSpec spec,
         Dictionary<string, Genre> genreMap,
         Dictionary<string, Platform> platformMap,
@@ -221,30 +171,8 @@ public static class DbSeeder
             });
     }
 
-    private static void SyncJunctions<T>(ICollection<T> current, IEnumerable<int> wanted,
-        Func<int, T> create, Func<T, int> idOf)
-        where T : class
-    {
-        var wantedSet = wanted.ToHashSet();
-        var stale = current.Where(e => !wantedSet.Contains(idOf(e))).ToList();
-        foreach (var e in stale) current.Remove(e);
-        var have = current.Select(idOf).ToHashSet();
-        foreach (var id in wantedSet.Where(id => !have.Contains(id)))
-            current.Add(create(id));
-    }
-
     private static IReadOnlyList<string> SteamImageFiles() =>
         new[] { "header.jpg", "library_600x900.jpg", "capsule_616x353.jpg", "library_hero.jpg" };
-
-    private static bool IsUsableTrailer(string url) =>
-        !string.IsNullOrWhiteSpace(url) &&
-        (url.Contains("youtube.com", StringComparison.OrdinalIgnoreCase) ||
-         url.Contains("youtu.be", StringComparison.OrdinalIgnoreCase) ||
-         url.Contains("vimeo.com", StringComparison.OrdinalIgnoreCase) ||
-         url.Contains("player.vimeo", StringComparison.OrdinalIgnoreCase) ||
-         url.EndsWith(".mp4", StringComparison.OrdinalIgnoreCase) ||
-         url.EndsWith(".webm", StringComparison.OrdinalIgnoreCase) ||
-         url.Contains(".mp4", StringComparison.OrdinalIgnoreCase));
 
     private static string SteamCover(string appId, string file) =>
         $"https://cdn.cloudflare.steamstatic.com/steam/apps/{appId}/{file}";

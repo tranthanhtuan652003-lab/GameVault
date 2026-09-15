@@ -60,7 +60,7 @@ async function request<T>(path: string, opts: RequestOptions = {}): Promise<T> {
   const headers: Record<string, string> = {
     Accept: "application/json",
   };
-  if (body !== undefined) headers["Content-Type"] = "application/json";
+  if (body !== undefined && !(body instanceof FormData)) headers["Content-Type"] = "application/json";
   if (token) headers["Authorization"] = `Bearer ${token}`;
 
   let res: Response;
@@ -68,7 +68,7 @@ async function request<T>(path: string, opts: RequestOptions = {}): Promise<T> {
     res = await fetch(url, {
       method,
       headers,
-      body: body !== undefined ? JSON.stringify(body) : undefined,
+      body: body instanceof FormData ? body : body !== undefined ? JSON.stringify(body) : undefined,
       signal,
       cache: "no-store",
     });
@@ -305,6 +305,18 @@ export const api = {
 
   // Admin
   admin: {
+    files: {
+      upload: async (file: File, token: string): Promise<string> => {
+        const form = new FormData();
+        form.append("file", file);
+        const url = await request<string>("/api/Files", {
+          method: "POST",
+          body: form,
+          token,
+        });
+        return url;
+      },
+    },
     dashboard: (token: string) =>
       request<DashboardDto>("/api/Admin/dashboard", { token }),
     users: (token: string) => request<UserDto[]>("/api/Admin/users", { token }),
@@ -336,6 +348,16 @@ export const api = {
       request<DeveloperDto[]>("/api/Admin/developers", { token }),
     publishers: (token: string) =>
       request<PublisherDto[]>("/api/Admin/publishers", { token }),
+    /** Upload file ảnh lên backend (không nhét base64 vào Neon) → trả URL /uploads/x.jpg */
+    uploadImage: (file: File, token: string) => {
+      const form = new FormData();
+      form.append("file", file);
+      return request<string>("/api/Files", {
+        method: "POST",
+        body: form,
+        token,
+      });
+    },
     externalSearch: (q: string, limit = 10, token: string) =>
       request<unknown[]>("/api/Admin/external/search", {
         query: { q, limit },

@@ -14,6 +14,7 @@ import { cn } from "@/lib/cn";
 type MoMoReturnData = {
   success: boolean;
   orderId: number;
+  orderNumber?: string;
   transId: string;
   requestId: string;
   resultCode: string;
@@ -154,18 +155,25 @@ function PaymentResultContent() {
   }
 
   const cancelled = result.resultCode === "1011" || result.resultCode === "1026";
+  const pending = result.resultCode === "1001";
 
   return (
     <div className="container-page flex flex-col items-center justify-center py-28 text-center">
       <span
         className={cn(
           "flex h-20 w-20 items-center justify-center rounded-full",
-          result.success ? "bg-accent/15 text-accent" : cancelled ? "bg-amber-500/15 text-amber-400" : "bg-danger/15 text-danger"
+          result.success
+            ? "bg-accent/15 text-accent"
+            : cancelled || pending
+              ? "bg-amber-500/15 text-amber-400"
+              : "bg-danger/15 text-danger"
         )}
       >
         {result.success ? (
           <CheckCircle size={44} weight="fill" />
         ) : cancelled ? (
+          <Clock size={44} weight="fill" />
+        ) : pending ? (
           <Clock size={44} weight="fill" />
         ) : (
           <XCircle size={44} weight="fill" />
@@ -173,14 +181,26 @@ function PaymentResultContent() {
       </span>
 
       <h1 className="mt-6 text-3xl font-extrabold text-ink">
-        {result.success ? "Thanh toán thành công!" : cancelled ? "Giao dịch bị hủy" : "Thanh toán không thành công"}
+        {result.success
+          ? "Thanh toán thành công!"
+          : pending
+            ? "Giao dịch đang được xử lý"
+            : cancelled
+              ? "Giao dịch bị hủy"
+              : "Thanh toán không thành công"}
       </h1>
-      <p className="mt-3 max-w-md text-ink-soft">{result.message}</p>
+      <p className="mt-3 max-w-md text-ink-soft">
+        {pending
+          ? "Số tiền đang chờ MoMo xác nhận. Key kích hoạt sẽ được cấp ngay khi giao dịch hoàn tất."
+          : result.message}
+      </p>
 
       <div className="mt-8 w-full max-w-sm space-y-2 rounded-2xl border border-edge bg-surface p-5 text-left text-sm">
-        {result.orderId > 0 && (
+        {result.orderNumber ? (
+          <Row label="Mã đơn hàng" value={result.orderNumber} />
+        ) : result.orderId > 0 ? (
           <Row label="Mã đơn hàng" value={`#${result.orderId}`} />
-        )}
+        ) : null}
         {result.amount > 0 && (
           <Row
             label="Số tiền"
@@ -197,7 +217,7 @@ function PaymentResultContent() {
       </div>
 
       <div className="mt-8 flex flex-col gap-3 sm:flex-row">
-        {result.success ? (
+        {result.success || pending ? (
           <Button onClick={() => router.push("/account")}>
             <Package size={18} /> Xem đơn hàng
           </Button>

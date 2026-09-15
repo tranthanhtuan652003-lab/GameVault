@@ -2,6 +2,7 @@
 
 import { useEffect, useState } from "react";
 import Image from "next/image";
+import { X } from "@phosphor-icons/react";
 import { useAuth } from "@/lib/auth";
 import { useToast } from "@/components/ui/toast";
 import { api } from "@/lib/api";
@@ -36,12 +37,12 @@ export default function AdminGamesPage() {
   }, [token, debouncedSearch]);
 
   const handleDelete = async (g: GameDto) => {
-    if (!token) return;
-    if (!confirm(`Xóa game "${g.title}"?`)) return;
+    if (!token || !g.isActive) return;
+    if (!confirm(`Ẩn game "${g.title}"? Game sẽ chuyển trạng thái ẩn trên kho game.`)) return;
     try {
       await api.admin.games.delete(g.id, token);
-      setGames((list) => list.filter((x) => x.id !== g.id));
-      toast("Đã xóa game");
+      setGames((list) => list.map((x) => (x.id === g.id ? { ...x, isActive: false } : x)));
+      toast(`Đã ẩn game "${g.title}"`, "success");
     } catch (err) {
       toast(err instanceof ApiError ? err.message : "Có lỗi xảy ra", "error");
     }
@@ -192,7 +193,7 @@ export default function AdminGamesPage() {
                             onClick={() => handleDelete(g)}
                             className="rounded-lg border border-danger/40 px-2.5 py-1 text-xs font-semibold text-danger transition hover:bg-danger/10"
                           >
-                            Xóa
+                            Ẩn
                           </button>
                         </>
                       ) : (
@@ -263,6 +264,15 @@ function CheckboxGroup({
   );
 }
 
+function readFileAsBase64(file: File): Promise<string> {
+  return new Promise((resolve, reject) => {
+    const reader = new FileReader();
+    reader.onload = () => resolve(reader.result as string);
+    reader.onerror = () => reject(new Error("Không đọc được file"));
+    reader.readAsDataURL(file);
+  });
+}
+
 function GameForm({
   token,
   editingId,
@@ -294,6 +304,13 @@ function GameForm({
   const [price, setPrice] = useState(existing?.price.toString() ?? "0");
   const [discountPrice, setDiscountPrice] = useState(existing?.discountPrice?.toString() ?? "");
   const [coverImage, setCoverImage] = useState(existing?.coverImage ?? "");
+  const [coverPreview, setCoverPreview] = useState(existing?.coverImage ?? "");
+  const [pendingCoverFile, setPendingCoverFile] = useState<File | null>(null);
+  const [galleryImages, setGalleryImages] = useState<string[]>(existing?.images ?? []);
+  const [galleryPreview, setGalleryPreview] = useState<string[]>(existing?.images ?? []);
+  const [pendingGalleryFiles, setPendingGalleryFiles] = useState<File[]>([]);
+  const [uploadingCover, setUploadingCover] = useState(false);
+  const [uploadingGallery, setUploadingGallery] = useState(false);
   const [trailerUrl, setTrailerUrl] = useState(existing?.trailerUrl ?? "");
   const [systemRequirements, setSystemRequirements] = useState(existing?.systemRequirements ?? "");
 
@@ -357,20 +374,53 @@ function GameForm({
     }
     setSubmitting(true);
     try {
+      let finalCoverImage = coverImage;
+      if (pendingCoverFile) {
+        setUploadingCover(true);
+        try {
+          finalCoverImage = await api.admin.files.upload(pendingCoverFile, token!);
+        } catch {
+          toast("Upload ảnh bìa thất bại", "error");
+          setSubmitting(false);
+          setUploadingCover(false);
+          return;
+        } finally {
+          setUploadingCover(false);
+        }
+      }
+
+      let finalGalleryImages = [...galleryImages];
+      if (pendingGalleryFiles.length > 0) {
+        setUploadingGallery(true);
+        try {
+          const uploadedUrls = await Promise.all(
+            pendingGalleryFiles.map((f) => api.admin.files.upload(f, token!))
+          );
+          finalGalleryImages = [...finalGalleryImages, ...uploadedUrls];
+        } catch {
+          toast("Upload ảnh_gallery thất bại", "error");
+          setSubmitting(false);
+          setUploadingGallery(false);
+          return;
+        } finally {
+          setUploadingGallery(false);
+        }
+      }
+
       const data = {
         title,
         description,
         price: Number(price),
         discountPrice: discountPrice ? Number(discountPrice) : null,
         releaseDate: null,
-        coverImage,
+        coverImage: finalCoverImage,
         trailerUrl,
         systemRequirements,
         genreIds,
         platformIds,
         developerIds,
         publisherIds,
-        images: [],
+        images: finalGalleryImages,
       };
       let game: GameDto;
       if (editingId != null) {
@@ -460,10 +510,41 @@ function GameForm({
             />
           </div>
           <div>
-            <label className="mb-1 block text-sm font-medium text-ink">Ảnh bìa URL</label>
+            <label className="mb-1 block text-sm font-medium text-ink">Ảnh bìa (chọn file)</label>
             <input
-              value={coverImage}
-              onChange={(e) => setCoverImage(e.target.value)}
+              type="file"
+              accept="image/*"
+              onChange={async (e) => {
+                const file = e.target.files?.[0];
+                if (!file) return;
+                if (!token) return;
+                setCoverPreview(await readFileAsBase64(file).catch(() => ""));
+                try {
+                  const url = await api.admin.files.upload(file, token);
+                  setCoverImage(url);
+                  toast("Đã tải ảnh bìa lên backend");
+                } catch {
+                  setCoverImage("");
+                  toast("Upload ảnh bìa thất bại", "error");
+                }
+                e.target.value = "";
+              }}
+              className="w-full rounded-lg border border-edge bg-surface-2 px-3 py-2 text-sm text-ink file:mr-3 file:rounded-lg file:border-0 file:bg-accent/15 file:px-3 file:py-1 file:text-sm file:font-semibold file:text-accent focus:border-accent focus:outline-none"
+            />
+            {coverPreview && (
+              <img
+                src={coverPreview}
+                alt=""
+                className="mt-2 h-32 w-full rounded-lg object-cover"
+              />
+            )}
+            <label className="mt-1 block text-sm font-medium text-ink">Hoặc nhập URL ảnh bìa</label>
+            <input
+              value={coverImage.startsWith("data:") ? "" : coverImage}
+              onChange={(e) => {
+                setCoverImage(e.target.value);
+                setCoverPreview(e.target.value);
+              }}
               className="w-full rounded-lg border border-edge bg-surface-2 px-3 py-2 text-sm text-ink focus:border-accent focus:outline-none"
               placeholder="https://..."
             />
@@ -509,15 +590,7 @@ function GameForm({
             className="w-full rounded-lg border border-edge bg-surface-2 px-3 py-2 text-sm text-ink focus:border-accent focus:outline-none"
           />
         </div>
-        <div>
-          <label className="mb-1 block text-sm font-medium text-ink">Trailer URL</label>
-          <input
-            value={trailerUrl}
-            onChange={(e) => setTrailerUrl(e.target.value)}
-            className="w-full rounded-lg border border-edge bg-surface-2 px-3 py-2 text-sm text-ink focus:border-accent focus:outline-none"
-            placeholder="https://..."
-          />
-        </div>
+          
         <div className="grid gap-4 sm:grid-cols-2">
           <CheckboxGroup
             label="Thể loại"

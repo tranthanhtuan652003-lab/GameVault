@@ -13,10 +13,16 @@ public interface IOrderService
     Task<(bool Success, string? Error)> UpdateStatusAsync(int orderId, string status);
     Task<(bool Success, string? Error)> ConfirmBankTransferAsync(int orderId, int userId);
     Task<(bool Success, string? Error)> DeliverKeysForPaidOrderAsync(int orderId);
+    Task<(bool Success, string? Error)> CompletePaidOrderAsync(int orderId, bool bumpSales);
 }
 
 public class OrderService : IOrderService
 {
+    // Đơn intent MoMo (vừa khởi tạo thanh toán, chưa đủ tiền) không được hiện
+    // trong danh sách đơn của user/admin cho tới khi thanh toán thành công.
+    public static readonly System.Linq.Expressions.Expression<Func<Order, bool>> NotPaymentIntent =
+        o => !(o.Status == "Pending" && o.PaymentStatus == "Pending" && o.Payments.Any(p => p.Method == "MoMo"));
+
     private readonly GameVaultDbContext _db;
     private readonly IGameKeyService _keys;
 
@@ -124,8 +130,9 @@ public class OrderService : IOrderService
                 LineTotal = item.UnitPrice * item.Quantity
             });
 
-            // Tăng sales count
-            item.Game.SalesCount += item.Quantity;
+            // Tăng sales count (MoMo: chờ tới khi thanh toán thành công)
+            if (paymentMethod != "MoMo")
+                item.Game.SalesCount += item.Quantity;
         }
 
         var payment = new Payment
@@ -139,14 +146,24 @@ public class OrderService : IOrderService
             PaidAt = paidAt == default ? DateTime.UtcNow : paidAt
         };
 
-        // Xóa giỏ hàng sau khi tạo đơn
-        _db.CartItems.RemoveRange(cart.Items);
+        // Xóa giỏ hàng sau khi tạo đơn (MoMo: giữ nguyên giỏ, chỉ xóa khi thanh toán
+        // thành công để user có thể thanh toán lại nếu thất bại / hủy).
+        if (paymentMethod != "MoMo")
+            _db.CartItems.RemoveRange(cart.Items);
         order.Payments.Add(payment);
         _db.Orders.Add(order);
 
         await _db.SaveChangesAsync();
 
         await tx.CommitAsync();
+
+        // Demo / thanh toán ngay: hoàn tất tự động (xuất key + Completed), không cần admin.
+        if (paymentMethod == "Demo")
+        {
+            var (done, err) = await CompletePaidOrderAsync(order.Id, bumpSales: false);
+            if (!done) return (false, err, null);
+        }
+
         await _db.Entry(order).ReloadAsync();
 
         return (true, null, await GetOrderAsync(userId, order.Id, true));
@@ -159,6 +176,7 @@ public class OrderService : IOrderService
             .Include(o => o.OrderDetails).ThenInclude(d => d.GameKeys)
             .Include(o => o.Payments)
             .Where(o => o.UserId == userId)
+            .Where(NotPaymentIntent)
             .OrderByDescending(o => o.CreatedAt)
             .ToListAsync();
         return orders.Select(ToDto).ToList();
@@ -241,6 +259,48 @@ public class OrderService : IOrderService
         {
             var reserved = await _keys.ReserveKeysAsync(detail.Game, detail.Quantity, now);
             foreach (var key in reserved) detail.GameKeys.Add(key);
+        }
+
+        await _db.SaveChangesAsync();
+        return (true, null);
+    }
+
+    // Hoàn tất đơn đã thanh toán: xuất key, đóng trạng thái Completed và xóa giỏ hàng
+    // tương ứng. Idempotent — chống callback trùng (return + IPN cùng đến).
+    public async Task<(bool Success, string? Error)> CompletePaidOrderAsync(int orderId, bool bumpSales)
+    {
+        var order = await _db.Orders
+            .Include(o => o.OrderDetails).ThenInclude(d => d.GameKeys)
+            .Include(o => o.OrderDetails).ThenInclude(d => d.Game)
+            .FirstOrDefaultAsync(o => o.Id == orderId);
+
+        if (order == null) return (false, "Không tìm thấy đơn hàng.");
+
+        // Đã xuất key rồi thì không xử lý lại (tránh tăng SalesCount trùng).
+        var alreadyDelivered = order.OrderDetails.Any(d => d.GameKeys.Any(k => k.Status == "Sold"));
+        if (alreadyDelivered) return (true, null);
+
+        if (bumpSales)
+            foreach (var detail in order.OrderDetails)
+                if (detail.Game != null)
+                    detail.Game.SalesCount += detail.Quantity;
+
+        var (deliverOk, deliverErr) = await DeliverKeysForPaidOrderAsync(order.Id);
+        if (!deliverOk) return (false, deliverErr);
+
+        order.PaymentStatus = "Paid";
+        order.PaidAt = DateTime.UtcNow;
+        order.Status = "Completed";
+
+        // Xóa các item giỏ thuộc game đã mua (chỉ khi thanh toán xong).
+        var gameIds = order.OrderDetails.Select(d => d.GameId).ToList();
+        var cart = await _db.Carts
+            .Include(c => c.Items)
+            .FirstOrDefaultAsync(c => c.UserId == order.UserId);
+        if (cart != null)
+        {
+            var toRemove = cart.Items.Where(i => gameIds.Contains(i.GameId)).ToList();
+            _db.CartItems.RemoveRange(toRemove);
         }
 
         await _db.SaveChangesAsync();

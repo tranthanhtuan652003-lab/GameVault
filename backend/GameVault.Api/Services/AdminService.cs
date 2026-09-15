@@ -38,7 +38,9 @@ public class AdminService : IAdminService
     {
         var totalUsers = await _db.Users.CountAsync();
         var totalGames = await _db.Games.CountAsync(g => g.IsActive);
-        var totalOrders = await _db.Orders.CountAsync(o => o.Status != "Cancelled");
+        var totalOrders = await _db.Orders
+            .Where(OrderService.NotPaymentIntent)
+            .CountAsync(o => o.Status != "Cancelled");
         // Doanh thu chỉ tính trên đơn đã hoàn tất (thực thu), không tính Pending/Processing
         var totalRevenue = await _db.Orders
             .Where(o => o.Status == "Completed")
@@ -89,6 +91,7 @@ public class AdminService : IAdminService
         var recentOrders = await _db.Orders
             .Include(o => o.User)
             .Include(o => o.OrderDetails)
+            .Where(OrderService.NotPaymentIntent)
             .OrderByDescending(o => o.CreatedAt)
             .Take(8)
             .Select(o => new RecentOrder
@@ -158,6 +161,7 @@ public class AdminService : IAdminService
             .AsNoTracking()
             .Include(o => o.OrderDetails).ThenInclude(d => d.GameKeys)
             .Include(o => o.Payments)
+            .Where(OrderService.NotPaymentIntent)
             .OrderByDescending(o => o.CreatedAt)
             .ToListAsync();
         return orders.Select(o => OrderService.ToDtoPublic(o)).ToList();
