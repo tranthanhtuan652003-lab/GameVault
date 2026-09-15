@@ -12,9 +12,16 @@ using Microsoft.OpenApi.Models;
 Encoding.RegisterProvider(CodePagesEncodingProvider.Instance);
 var builder = WebApplication.CreateBuilder(args);
 
-// DbContext – chuẩn hoá connection string: chấp nhận cả dạng Neon URL
-// (postgresql://...) và dạng key=value Npgsql chuẩn.
-var connStr = builder.Configuration.GetConnectionString("DefaultConnection") ?? "";
+// DbContext – chuẩn hoá connection string: chấp nhận nhiều nguồn cấu hình
+// (ConnectionStrings__DefaultConnection | DATABASE_URL) và cả dạng Neon URL
+// (postgresql://...) lẫn dạng key=value Npgsql chuẩn.
+var connStr = builder.Configuration.GetConnectionString("DefaultConnection");
+if (string.IsNullOrWhiteSpace(connStr))
+    connStr = builder.Configuration["DATABASE_URL"];
+if (string.IsNullOrWhiteSpace(connStr))
+    throw new InvalidOperationException(
+        "Thiếu connection string. Đặt biến môi trường ConnectionStrings__DefaultConnection hoặc DATABASE_URL.");
+
 if (connStr.StartsWith("postgresql://", StringComparison.OrdinalIgnoreCase) ||
     connStr.StartsWith("postgres://", StringComparison.OrdinalIgnoreCase))
 {
