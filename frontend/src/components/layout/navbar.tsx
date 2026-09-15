@@ -19,6 +19,7 @@ import { useState } from "react";
 const navLinks = [
   { href: "/", label: "Trang chủ" },
   { href: "/games", label: "Kho game" },
+  { href: "/news", label: "Tin tức" },
 ];
 
 export function Logo({ className }: { className?: string }) {
