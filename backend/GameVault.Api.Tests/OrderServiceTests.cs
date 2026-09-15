@@ -197,6 +197,27 @@ public class OrderServiceTests
         Assert.NotNull(adminSees);
     }
 
+    [Fact]
+    public async Task KeysOnlyDeliveredWhenAdminMarksOrderCompleted()
+    {
+        using var db = new TestDb();
+        var fx = await BuildSimpleOrderAsync(db);
+        var order = (await fx.OrderSvc.CreateFromCartAsync(fx.UserId, NewOrder())).Order!;
+        var adminSvc = new AdminService(db.Db, fx.OrderSvc);
+
+        // Đang xử lý => chưa được cấp key
+        var processing = await adminSvc.UpdateOrderStatusAsync(order.Id, "Processing");
+        Assert.True(processing.Success);
+        var atProcessing = await fx.OrderSvc.GetOrderAsync(fx.UserId, order.Id, true);
+        Assert.Equal(0, atProcessing!.Items.Sum(i => i.Keys.Count));
+
+        // Hoàn thành => key được cấp đúng theo số lượng
+        var completed = await adminSvc.UpdateOrderStatusAsync(order.Id, "Completed");
+        Assert.True(completed.Success);
+        var atCompleted = await fx.OrderSvc.GetOrderAsync(fx.UserId, order.Id, true);
+        Assert.Equal(3, atCompleted!.Items.Sum(i => i.Keys.Count));
+    }
+
     private static CreateOrderRequest NewOrder() => new()
     {
         CustomerName = "Test Buyer",

@@ -172,8 +172,8 @@ public class AdminService : IAdminService
         order.Status = status;
         await _db.SaveChangesAsync();
 
-        // Key chỉ được cấp khi admin xác nhận xử lý đơn (Processing/Completed)
-        if (status is "Processing" or "Completed")
+        // Key chỉ được cấp khi admin xác nhận hoàn thành đơn (Completed)
+        if (status == "Completed")
         {
             var (deliverOk, deliverErr) = await _orders.DeliverKeysForPaidOrderAsync(orderId);
             if (!deliverOk) return (false, deliverErr);

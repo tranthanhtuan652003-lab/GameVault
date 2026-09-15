@@ -113,8 +113,20 @@ export default function AdminOrdersPage() {
                     <p className="text-xs text-ink-soft">{o.email}</p>
                   </td>
                   <td className="p-4 text-ink-soft">{formatDateTime(o.createdAt)}</td>
-                  <td className="p-4 text-ink-soft">
-                    {o.items.reduce((a, i) => a + i.quantity, 0)}
+                  <td className="max-w-xs p-4 text-ink-soft">
+                    <div className="flex flex-col gap-1">
+                      {o.items.map((i, idx) => (
+                        <span key={idx} className="truncate text-xs font-medium text-ink">
+                          {i.gameTitle}
+                          {i.quantity > 1 && (
+                            <span className="ml-1 text-ink-soft">×{i.quantity}</span>
+                          )}
+                        </span>
+                      ))}
+                    </div>
+                    <span className="text-xs text-ink-soft">
+                      {o.items.reduce((a, i) => a + i.quantity, 0)} sản phẩm
+                    </span>
                   </td>
                   <td className="p-4">
                     <span className="inline-flex items-center gap-1.5 text-xs">
