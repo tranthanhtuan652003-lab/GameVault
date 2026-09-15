@@ -76,9 +76,8 @@ export default function CheckoutPage() {
         </p>
         <p className="mt-2 flex items-center justify-center gap-1.5 text-sm text-ink-soft">
           <CheckCircle size={16} weight="fill" className="text-accent" />
-          Key kích hoạt Steam (
-          {order.items.reduce((a, i) => a + i.keys.length, 0)} key) đã sẵn sàng trong
-          đơn hàng của bạn.
+          Key kích hoạt Steam sẽ được hiển thị trong đơn hàng sau khi cửa hàng xác nhận
+          thanh toán.
         </p>
         <div className="mt-8 flex flex-col gap-3 sm:flex-row">
           <Button onClick={() => router.push("/account")}>Xem đơn hàng</Button>

@@ -123,7 +123,7 @@ public class OrderServiceTests
     }
 
     [Fact]
-    public async Task CreateOrder_DemoPayment_DeliversKeys()
+    public async Task CreateOrder_DemoPayment_WaitsForAdminConfirmBeforeDeliveringKeys()
     {
         using var db = new TestDb();
         var fx = await BuildSimpleOrderAsync(db);
@@ -133,19 +133,22 @@ public class OrderServiceTests
         var order = res.Order!;
         Assert.Equal("Paid", order.PaymentStatus);
 
-        // Mỗi OrderDetail phải nhận đúng Quantity key
+        // Tạo đơn chưa cấp key: admin chưa xác nhận thì đơn không có key nào
         var cyber = order.Items.Single(i => i.GameTitle == "Cyberpunk 2077");
-        var hades = order.Items.Single(i => i.GameTitle == "Hades");
-        Assert.Equal(2, cyber.Keys.Count);
-        Assert.Single(hades.Keys);
-        Assert.Distinct(cyber.Keys);
-        Assert.All(cyber.Keys, k => Assert.Contains("-", k));
+        Assert.Empty(cyber.Keys);
+        Assert.Empty(order.Items.Single(i => i.GameTitle == "Hades").Keys);
+        Assert.Equal(0, db.Db.GameKeys.Count(k => k.GameId == 1 && k.Status == "Sold"));
 
-        // Trong DB: 2 key của Cyberpunk chuyển sang Sold, gắn OrderDetailId
-        var sold = db.Db.GameKeys.Count(k => k.GameId == 1 && k.Status == "Sold");
-        Assert.Equal(2, sold);
-        var avail = db.Db.GameKeys.Count(k => k.GameId == 1 && k.Status == "Available");
-        Assert.Equal(18, avail);
+        // Sau khi admin xác nhận xử lý -> key được cấp theo đúng Quantity
+        var (deliverOk, deliverErr) = await fx.OrderSvc.DeliverKeysForPaidOrderAsync(order.Id);
+        Assert.True(deliverOk, deliverErr);
+        var after = await fx.OrderSvc.GetOrderAsync(fx.UserId, order.Id, true);
+        var cyber2 = after!.Items.Single(i => i.GameTitle == "Cyberpunk 2077");
+        Assert.Equal(2, cyber2.Keys.Count);
+        Assert.Single(after.Items.Single(i => i.GameTitle == "Hades").Keys);
+        Assert.Distinct(cyber2.Keys);
+        Assert.All(cyber2.Keys, k => Assert.Contains("-", k));
+        Assert.Equal(2, db.Db.GameKeys.Count(k => k.GameId == 1 && k.Status == "Sold"));
     }
 
     [Fact]

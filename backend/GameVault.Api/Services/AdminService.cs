@@ -171,6 +171,14 @@ public class AdminService : IAdminService
         if (!valid.Contains(status)) return (false, "Trạng thái không hợp lệ.");
         order.Status = status;
         await _db.SaveChangesAsync();
+
+        // Key chỉ được cấp khi admin xác nhận xử lý đơn (Processing/Completed)
+        if (status is "Processing" or "Completed")
+        {
+            var (deliverOk, deliverErr) = await _orders.DeliverKeysForPaidOrderAsync(orderId);
+            if (!deliverOk) return (false, deliverErr);
+        }
+
         return (true, null);
     }
 

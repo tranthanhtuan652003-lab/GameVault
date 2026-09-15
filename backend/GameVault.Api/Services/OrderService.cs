@@ -146,17 +146,6 @@ public class OrderService : IOrderService
 
         await _db.SaveChangesAsync();
 
-        // Nếu thanh toán thành công ngay (Demo) thì cấp key vào đơn
-        if (paymentStatus == "Paid")
-        {
-            var (deliverOk, deliverErr) = await DeliverKeysForPaidOrderAsync(order.Id);
-            if (!deliverOk)
-            {
-                await tx.RollbackAsync();
-                return (false, deliverErr, null);
-            }
-        }
-
         await tx.CommitAsync();
         await _db.Entry(order).ReloadAsync();
 
