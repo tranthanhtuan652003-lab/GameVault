@@ -129,20 +129,6 @@ function LoginForm() {
           </p>
         </div>
 
-        {googleClientId && (
-          <div className="mb-6">
-            <div
-              id="google-signin-btn-login"
-              className="flex justify-center"
-            />
-            <div className="my-5 flex items-center gap-3 text-[11px] font-semibold uppercase tracking-wider text-ink-soft">
-              <span className="h-px flex-1 bg-edge" />
-              Hoặc
-              <span className="h-px flex-1 bg-edge" />
-            </div>
-          </div>
-        )}
-
         <form
           onSubmit={submit}
           className="space-y-4 rounded-2xl border border-edge bg-surface p-6"
@@ -190,6 +176,17 @@ function LoginForm() {
             Đăng nhập
           </Button>
         </form>
+
+        {googleClientId && (
+          <div className="mt-6">
+            <div className="my-5 flex items-center gap-3 text-[11px] font-semibold uppercase tracking-wider text-ink-soft">
+              <span className="h-px flex-1 bg-edge" />
+              Hoặc
+              <span className="h-px flex-1 bg-edge" />
+            </div>
+            <div id="google-signin-btn-login" className="flex justify-center" />
+          </div>
+        )}
 
         <p className="mt-6 text-center text-sm text-ink-soft">
           Chưa có tài khoản?{" "}
