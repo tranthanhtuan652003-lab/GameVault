@@ -1,3 +1,4 @@
+using System.Net.Http.Headers;
 using GameVault.Api.Helpers;
 using Microsoft.AspNetCore.Authorization;
 using Microsoft.AspNetCore.Mvc;
@@ -5,8 +6,9 @@ using Microsoft.AspNetCore.Mvc;
 namespace GameVault.Api.Controllers;
 
 /// <summary>
-/// Upload ảnh lên backend (wwwroot/uploads) — DB chỉ lưu URL ngắn như /uploads/x.jpg.
-/// Tránh nhét base64 khổng lồ vào Neon (phồng DB, tràn cột, EF save fail).
+/// Upload ảnh admin → lưu lên Supabase Storage (bucket công khai) → trả về URL công khai.
+/// DB Neon chỉ lưu URL, không nhét base64. File sống trên Supabase nên không mất khi
+/// Render free redeploy (wwwroot/uploads bị xoá).
 /// </summary>
 [ApiController]
 [Route("api/[controller]")]
@@ -16,11 +18,16 @@ public class FilesController : ControllerBase
         { ".jpg", ".jpeg", ".png", ".webp", ".gif" };
     private const long MaxBytes = 5 * 1024 * 1024; // 5MB/ảnh
 
-    private readonly IWebHostEnvironment _env;
+    private readonly IHttpClientFactory _http;
+    private readonly IConfiguration _config;
 
-    public FilesController(IWebHostEnvironment env) => _env = env;
+    public FilesController(IHttpClientFactory http, IConfiguration config)
+    {
+        _http = http;
+        _config = config;
+    }
 
-    /// <summary>Admin upload 1 ảnh → lưu wwwroot/uploads → trả URL tương đối /uploads/xxx.jpg</summary>
+    /// <summary>Admin upload 1 ảnh → lưu Supabase Storage → trả URL công khai https://...</summary>
     [Authorize(Roles = "Admin")]
     [HttpPost]
     public async Task<IActionResult> Upload(IFormFile file)
@@ -34,18 +41,37 @@ public class FilesController : ControllerBase
         if (!AllowedExt.Contains(ext))
             return BadRequest(Res.Fail("Chỉ chấp nhận ảnh jpg/jpeg/png/webp/gif."));
 
-        var wwwRoot = _env.WebRootPath
-            ?? Path.Combine(Directory.GetCurrentDirectory(), "wwwroot");
-        var uploadsDir = Path.Combine(wwwRoot, "uploads");
-        Directory.CreateDirectory(uploadsDir);
+        var url = _config["Supabase:Url"]?.TrimEnd('/');
+        var serviceKey = _config["Supabase:ServiceKey"];
+        var bucket = _config["Supabase:Bucket"];
+        if (string.IsNullOrWhiteSpace(url) ||
+            string.IsNullOrWhiteSpace(serviceKey) ||
+            string.IsNullOrWhiteSpace(bucket))
+            return StatusCode(500, Res.Fail("Chưa cấu hình Supabase (Supabase:Url / ServiceKey / Bucket)."));
 
-        var name = $"{Guid.NewGuid():N}{ext}";
-        var path = Path.Combine(uploadsDir, name);
+        var path = $"games/{Guid.NewGuid():N}{ext}";
+        var client = _http.CreateClient("Supabase");
 
-        await using (var stream = System.IO.File.Create(path))
-            await file.CopyToAsync(stream);
+        using var content = new StreamContent(file.OpenReadStream());
+        content.Headers.ContentType = new MediaTypeHeaderValue("application/octet-stream");
+        using var request = new HttpRequestMessage(
+            HttpMethod.Post,
+            $"{url}/storage/v1/object/{bucket}/{path}")
+        {
+            Content = content
+        };
+        request.Headers.TryAddWithoutValidation("apikey", serviceKey);
+        request.Headers.Authorization = new AuthenticationHeaderValue("Bearer", serviceKey);
+        request.Headers.TryAddWithoutValidation("x-upsert", "true");
 
-        var url = $"/uploads/{name}";
-        return Ok(Res.Ok("Đã upload ảnh", url));
+        var response = await client.SendAsync(request);
+        if (!response.IsSuccessStatusCode)
+        {
+            var detail = await response.Content.ReadAsStringAsync();
+            return BadRequest(Res.Fail($"Upload Supabase thất bại: {detail}"));
+        }
+
+        var publicUrl = $"{url}/storage/v1/object/public/{bucket}/{path}";
+        return Ok(Res.Ok("Đã upload ảnh lên Supabase Storage.", publicUrl));
     }
 }

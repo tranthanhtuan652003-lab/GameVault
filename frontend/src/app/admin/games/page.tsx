@@ -307,7 +307,8 @@ function GameForm({
   const [coverPreview, setCoverPreview] = useState(existing?.coverImage ?? "");
   const [pendingCoverFile, setPendingCoverFile] = useState<File | null>(null);
   const [galleryImages, setGalleryImages] = useState<string[]>(existing?.images ?? []);
-  const [galleryPreview, setGalleryPreview] = useState<string[]>(existing?.images ?? []);
+  const [galleryPreview, setGalleryPreview] = useState<string[]>([]);
+  const MAX_GALLERY = 6;
   const [pendingGalleryFiles, setPendingGalleryFiles] = useState<File[]>([]);
   const [uploadingCover, setUploadingCover] = useState(false);
   const [uploadingGallery, setUploadingGallery] = useState(false);
@@ -364,6 +365,43 @@ function GameForm({
     setRawgResults([]);
     setRawgQuery("");
     toast("Đã nhập dữ liệu từ RAWG");
+  };
+
+  const handleGalleryFiles = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    const files = Array.from(e.target.files ?? []);
+    e.target.value = "";
+    const remaining = MAX_GALLERY - galleryImages.length - galleryPreview.length;
+    if (remaining <= 0) {
+      toast(`Tối đa ${MAX_GALLERY} hình ảnh gallery`, "error");
+      return;
+    }
+    if (files.length > remaining) {
+      toast(`Chỉ thêm được tối đa ${remaining} hình nữa`, "error");
+    }
+    const picked = files.slice(0, remaining);
+    const previews = await Promise.all(
+      picked.map((f) => readFileAsBase64(f).catch(() => ""))
+    );
+    const okFiles: File[] = [];
+    const okPreviews: string[] = [];
+    previews.forEach((p, i) => {
+      if (p) {
+        okFiles.push(picked[i]);
+        okPreviews.push(p);
+      }
+    });
+    setPendingGalleryFiles((list) => [...list, ...okFiles]);
+    setGalleryPreview((list) => [...list, ...okPreviews]);
+  };
+
+  const removeGalleryImage = (index: number) => {
+    if (index < galleryImages.length) {
+      setGalleryImages((list) => list.filter((_, i) => i !== index));
+    } else {
+      const pendingIndex = index - galleryImages.length;
+      setPendingGalleryFiles((list) => list.filter((_, i) => i !== pendingIndex));
+      setGalleryPreview((list) => list.filter((_, i) => i !== pendingIndex));
+    }
   };
 
   const handleSubmit = async (e: React.FormEvent) => {
@@ -581,6 +619,48 @@ function GameForm({
             rows={4}
             className="w-full rounded-lg border border-edge bg-surface-2 px-3 py-2 text-sm text-ink focus:border-accent focus:outline-none"
           />
+        </div>
+        <div>
+          <label className="mb-1 block text-sm font-medium text-ink">
+            Hình ảnh gallery (tối đa {MAX_GALLERY} hình)
+          </label>
+          <div className="grid grid-cols-3 gap-3 sm:grid-cols-6">
+            {[...galleryImages, ...galleryPreview].map((src, i) => (
+              <div
+                key={`${src}-${i}`}
+                className="relative aspect-video overflow-hidden rounded-lg border border-edge bg-surface-2"
+              >
+                <img src={src} alt="" className="h-full w-full object-cover" />
+                <button
+                  type="button"
+                  onClick={() => removeGalleryImage(i)}
+                  title="Xóa hình"
+                  className="absolute right-1 top-1 rounded-full bg-black/60 p-1 text-white transition hover:bg-danger"
+                >
+                  <X size={12} weight="bold" />
+                </button>
+              </div>
+            ))}
+            {galleryImages.length + galleryPreview.length < MAX_GALLERY && (
+              <label className="flex aspect-video cursor-pointer flex-col items-center justify-center gap-0.5 rounded-lg border border-dashed border-edge bg-surface-2 text-ink-soft transition hover:border-accent hover:text-accent">
+                <input
+                  type="file"
+                  accept="image/*"
+                  multiple
+                  onChange={handleGalleryFiles}
+                  className="hidden"
+                />
+                <span className="text-lg leading-none">+</span>
+                <span className="text-[10px]">
+                  {MAX_GALLERY - galleryImages.length - galleryPreview.length} chỗ
+                </span>
+              </label>
+            )}
+          </div>
+          <p className="mt-1 text-xs text-ink-soft">
+            Có thể chọn nhiều ảnh cùng lúc, tối đa{" "}
+            {MAX_GALLERY - galleryImages.length - galleryPreview.length} hình còn lại.
+          </p>
         </div>
         <div>
           <label className="mb-1 block text-sm font-medium text-ink">Yêu cầu hệ thống</label>
