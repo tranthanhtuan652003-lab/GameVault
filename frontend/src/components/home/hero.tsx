@@ -22,6 +22,19 @@ export function Hero({ games }: { games: GameDto[] }) {
 
   return (
     <section className="relative overflow-hidden border-b border-edge bg-canvas">
+      {/* Background video */}
+      <video
+        autoPlay
+        muted
+        loop
+        playsInline
+        preload="metadata"
+        className="absolute inset-0 h-full w-full object-cover"
+        src="https://www.image2url.com/r2/default/videos/1789541230015-3f74cd03-0c18-407a-8b67-57df94d078d9.mp4"
+      />
+      {/* Scrim: mờ đen mạnh phần dưới video để che watermark & nội dung đọc rõ */}
+      <div className="absolute inset-0 bg-gradient-to-t from-black via-black/60 via-55% to-black/35" />
+
       <div className="container-page grid min-h-[100dvh] items-center gap-10 pt-24 pb-16 lg:grid-cols-[1.05fr_1fr] lg:pt-24">
         {/* Left: value prop */}
         <div className="relative z-10">
@@ -30,12 +43,12 @@ export function Hero({ games }: { games: GameDto[] }) {
             Kho game số
           </div>
 
-          <h1 className="text-balance text-4xl font-extrabold tracking-tight leading-[1.05] text-ink sm:text-5xl lg:text-6xl">
+          <h1 className="text-balance text-4xl font-extrabold tracking-tight leading-[1.05] text-white sm:text-5xl lg:text-6xl">
             Mở kho{"\u00a0"}khám phá{" "}
             <span className="text-accent">vũ trụ game</span> của bạn
           </h1>
 
-          <p className="mt-5 max-w-xl text-base leading-relaxed text-ink-soft sm:text-lg">
+          <p className="mt-5 max-w-xl text-base leading-relaxed text-white/80 sm:text-lg">
             Hàng ngàn tựa game từ đối tác uy tín, giá tốt, đánh giá thật từ cộng
             đồng. Mua một lần, chơi mãi mãi.
           </p>
@@ -53,7 +66,7 @@ export function Hero({ games }: { games: GameDto[] }) {
             </Link>
             <Link
               href="/games?sort=rating"
-              className="inline-flex h-12 items-center justify-center rounded-lg border border-edge px-6 text-base font-semibold text-ink transition hover:border-accent/60 hover:text-accent"
+              className="inline-flex h-12 items-center justify-center rounded-lg border border-white/40 px-6 text-base font-semibold text-white transition hover:border-white/70 hover:text-white"
             >
               Game nổi bật
             </Link>
@@ -136,8 +149,8 @@ export function Hero({ games }: { games: GameDto[] }) {
 function Stat({ value, label }: { value: string; label: string }) {
   return (
     <div>
-      <p className="text-2xl font-extrabold text-ink">{value}</p>
-      <p className="mt-0.5 text-xs text-ink-soft">{label}</p>
+      <p className="text-2xl font-extrabold text-white">{value}</p>
+      <p className="mt-0.5 text-xs text-white/70">{label}</p>
     </div>
   );
 }
