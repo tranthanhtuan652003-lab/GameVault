@@ -72,12 +72,17 @@ public class GameKeyService : IGameKeyService
         return (true, null, new ImportResult { Created = add.Count, Duplicates = dup, Skipped = 0 });
     }
 
-    public async Task<List<GameKeyDto>> ListAsync(int? gameId)
+    public async Task<List<GameKeyDto>> ListAsync(int? gameId, string? search = null)
     {
         IQueryable<GameKey> query = _db.GameKeys.AsNoTracking()
             .Include(k => k.Game);
 
         if (gameId.HasValue) query = query.Where(k => k.GameId == gameId.Value);
+        if (!string.IsNullOrWhiteSpace(search))
+        {
+            search = search.Trim();
+            query = query.Where(k => EF.Functions.ILike(k.Key, $"%{search}%"));
+        }
 
         var items = await query
             .OrderByDescending(k => k.CreatedAt)

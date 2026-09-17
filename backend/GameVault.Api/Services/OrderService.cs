@@ -25,11 +25,13 @@ public class OrderService : IOrderService
 
     private readonly GameVaultDbContext _db;
     private readonly IGameKeyService _keys;
+    private readonly INotificationService _notifications;
 
-    public OrderService(GameVaultDbContext db, IGameKeyService keys)
+    public OrderService(GameVaultDbContext db, IGameKeyService keys, INotificationService notifications)
     {
         _db = db;
         _keys = keys;
+        _notifications = notifications;
     }
 
     public async Task<(bool Success, string? Error, OrderDto? Order)> CreateFromCartAsync(int userId, CreateOrderRequest request)
@@ -165,6 +167,12 @@ public class OrderService : IOrderService
         }
 
         await _db.Entry(order).ReloadAsync();
+
+        var userName = await _db.Users.Where(u => u.Id == userId)
+            .Select(u => u.UserName).FirstOrDefaultAsync();
+        await _notifications.AddAsync("Order",
+            $"'{(string.IsNullOrEmpty(userName) ? "Người dùng" : userName)}' đặt đơn {order.OrderNumber} — {order.Total:N0} đ ({paymentMethod})",
+            userName, order.Id);
 
         return (true, null, await GetOrderAsync(userId, order.Id, true));
     }

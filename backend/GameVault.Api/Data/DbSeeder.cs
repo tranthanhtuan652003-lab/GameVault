@@ -166,8 +166,7 @@ public static class DbSeeder
         foreach (var file in SteamImageFiles())
             game.GameImages.Add(new GameImage
             {
-                ImageUrl = SteamCover(spec.AppId, file),
-                IsCover = file == "header.jpg"
+                ImageUrl = SteamCover(spec.AppId, file)
             });
     }
 

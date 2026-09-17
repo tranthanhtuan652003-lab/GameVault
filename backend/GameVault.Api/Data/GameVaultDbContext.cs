@@ -28,6 +28,7 @@ public class GameVaultDbContext : DbContext
     public DbSet<OrderDetail> OrderDetails => Set<OrderDetail>();
     public DbSet<Payment> Payments => Set<Payment>();
     public DbSet<GameKey> GameKeys => Set<GameKey>();
+    public DbSet<Notification> Notifications => Set<Notification>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -42,6 +43,7 @@ public class GameVaultDbContext : DbContext
         ConfigureCart(modelBuilder);
         ConfigureOrders(modelBuilder);
         ConfigureGameKeys(modelBuilder);
+        ConfigureNotifications(modelBuilder);
     }
 
     private static void ConfigureRoles(ModelBuilder mb)
@@ -89,7 +91,6 @@ public class GameVaultDbContext : DbContext
             e.Property(g => g.DiscountPrice).HasPrecision(18, 2);
             e.Property(g => g.CoverImage).HasMaxLength(1000);
             e.Property(g => g.TrailerUrl).HasMaxLength(1000);
-            e.Property(g => g.ExternalId).HasMaxLength(50);
             e.HasIndex(g => g.Slug).IsUnique();
             e.HasIndex(g => g.Title);
             e.HasIndex(g => g.ReleaseDate);
@@ -314,6 +315,20 @@ public class GameVaultDbContext : DbContext
 
             e.HasOne(k => k.Game).WithMany(g => g.GameKeys).HasForeignKey(k => k.GameId).OnDelete(DeleteBehavior.Restrict);
             e.HasOne(k => k.OrderDetail).WithMany(d => d.GameKeys).HasForeignKey(k => k.OrderDetailId).OnDelete(DeleteBehavior.Restrict);
+        });
+    }
+
+    private static void ConfigureNotifications(ModelBuilder mb)
+    {
+        mb.Entity<Notification>(e =>
+        {
+            e.ToTable("Notifications");
+            e.HasKey(n => n.Id);
+            e.Property(n => n.Type).HasMaxLength(30).IsRequired();
+            e.Property(n => n.Message).HasMaxLength(1000).IsRequired();
+            e.Property(n => n.UserName).HasMaxLength(50);
+            e.HasIndex(n => n.CreatedAt);
+            e.HasIndex(n => n.IsRead);
         });
     }
 }

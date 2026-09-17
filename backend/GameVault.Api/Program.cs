@@ -42,6 +42,7 @@ builder.Services.AddScoped<IAdminService, AdminService>();
 builder.Services.AddScoped<IBankTransferService, BankTransferService>();
 builder.Services.AddScoped<IMoMoService, MoMoService>();
 builder.Services.AddScoped<IGameKeyService, GameKeyService>();
+builder.Services.AddScoped<INotificationService, NotificationService>();
 builder.Services.AddHttpClient<IExternalGameApiService, ExternalGameApiService>();
 builder.Services.AddHttpClient();
 

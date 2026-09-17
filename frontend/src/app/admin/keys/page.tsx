@@ -15,11 +15,18 @@ export default function AdminKeysPage() {
 
   const [games, setGames] = useState<GameDto[]>([]);
   const [gameId, setGameId] = useState("");
+  const [search, setSearch] = useState("");
+  const [debouncedSearch, setDebouncedSearch] = useState("");
   const [keys, setKeys] = useState<GameKeyDto[]>([]);
   const [loading, setLoading] = useState(true);
   const [generateCount, setGenerateCount] = useState("10");
   const [importText, setImportText] = useState("");
   const [submitting, setSubmitting] = useState(false);
+
+  useEffect(() => {
+    const t = setTimeout(() => setDebouncedSearch(search), 350);
+    return () => clearTimeout(t);
+  }, [search]);
 
   useEffect(() => {
     if (!token) return;
@@ -32,11 +39,11 @@ export default function AdminKeysPage() {
   const loadKeys = useCallback(() => {
     if (!token) return;
     api.admin.gameKeys
-      .list(gameId ? Number(gameId) : undefined, token)
+      .list(gameId ? Number(gameId) : undefined, debouncedSearch, token)
       .then(setKeys)
       .catch(() => toast("Không tải được danh sách key", "error"))
       .finally(() => setLoading(false));
-  }, [token, gameId, toast]);
+  }, [token, gameId, debouncedSearch, toast]);
 
   useEffect(() => {
     loadKeys();
@@ -131,18 +138,26 @@ export default function AdminKeysPage() {
             Quản lý key kích hoạt Steam cho từng game
           </p>
         </div>
-        <select
-          value={gameId}
-          onChange={(e) => setGameId(e.target.value)}
-          className={cn(selectClass, "w-64")}
-        >
-          <option value="">Tất cả game ({games.length})</option>
-          {games.map((g) => (
-            <option key={g.id} value={g.id}>
-              {g.title} — còn {g.availableKeys} key
-            </option>
-          ))}
-        </select>
+        <div className="flex flex-wrap items-center gap-2">
+          <input
+            value={search}
+            onChange={(e) => setSearch(e.target.value)}
+            placeholder="Tìm theo mã key..."
+            className={cn(inputClass, "w-56")}
+          />
+          <select
+            value={gameId}
+            onChange={(e) => setGameId(e.target.value)}
+            className={cn(selectClass, "w-64")}
+          >
+            <option value="">Tất cả game ({games.length})</option>
+            {games.map((g) => (
+              <option key={g.id} value={g.id}>
+                {g.title} — còn {g.availableKeys} key
+              </option>
+            ))}
+          </select>
+        </div>
       </div>
 
       <div className="mb-6 flex gap-3">

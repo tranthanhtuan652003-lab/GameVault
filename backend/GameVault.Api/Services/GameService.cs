@@ -211,7 +211,7 @@ public class GameService : IGameService
 
         var have = game.GameImages.Select(i => i.ImageUrl).ToHashSet();
         foreach (var url in wanted.Where(u => !have.Contains(u)))
-            game.GameImages.Add(new GameImage { ImageUrl = url, IsCover = false });
+            game.GameImages.Add(new GameImage { ImageUrl = url });
     }
 
     public async Task<(bool Success, string? Error)> DeleteAsync(int id)
@@ -357,7 +357,7 @@ public class GameService : IGameService
         foreach (var image in request.Images.Distinct())
         {
             if (!string.IsNullOrWhiteSpace(image))
-                game.GameImages.Add(new GameImage { ImageUrl = image.Trim(), IsCover = false });
+                game.GameImages.Add(new GameImage { ImageUrl = image.Trim() });
         }
     }
 

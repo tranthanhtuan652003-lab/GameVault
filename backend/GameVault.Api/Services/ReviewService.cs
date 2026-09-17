@@ -17,8 +17,13 @@ public interface IReviewService
 public class ReviewService : IReviewService
 {
     private readonly GameVaultDbContext _db;
+    private readonly INotificationService _notifications;
 
-    public ReviewService(GameVaultDbContext db) => _db = db;
+    public ReviewService(GameVaultDbContext db, INotificationService notifications)
+    {
+        _db = db;
+        _notifications = notifications;
+    }
 
     public async Task<(bool Success, string? Error, ReviewDto? Review)> CreateAsync(int userId, int gameId, CreateReviewRequest request)
     {
@@ -53,6 +58,12 @@ public class ReviewService : IReviewService
         _db.Reviews.Add(review);
         await _db.SaveChangesAsync();
         await RecalculateGameRatingAsync(gameId);
+
+        var userName = await _db.Users.Where(u => u.Id == userId)
+            .Select(u => u.UserName).FirstOrDefaultAsync();
+        await _notifications.AddAsync("Review",
+            $"'{userName ?? "Người dùng"}' đã đánh giá {request.Rating}★ {game.Title}",
+            userName, orderId: null);
 
         return (true, null, await LoadDtoAsync(review.Id));
     }

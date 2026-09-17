@@ -187,6 +187,16 @@ export interface ReviewsResponse {
   stats: ReviewStats;
 }
 
+export interface NotificationDto {
+  id: number;
+  type: string;
+  message: string;
+  userName: string | null;
+  orderId: number | null;
+  isRead: boolean;
+  createdAt: string;
+}
+
 export interface DashboardDto {
   totalUsers: number;
   totalGames: number;

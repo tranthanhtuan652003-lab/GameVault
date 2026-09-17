@@ -18,13 +18,15 @@ public class AuthService : IAuthService
     private readonly IConfiguration _config;
     private readonly IWebHostEnvironment _env;
     private readonly IHttpClientFactory _http;
+    private readonly INotificationService _notifications;
 
-    public AuthService(GameVaultDbContext db, IConfiguration config, IWebHostEnvironment env, IHttpClientFactory http)
+    public AuthService(GameVaultDbContext db, IConfiguration config, IWebHostEnvironment env, IHttpClientFactory http, INotificationService notifications)
     {
         _db = db;
         _config = config;
         _env = env;
         _http = http;
+        _notifications = notifications;
     }
 
     public async Task<(bool Success, string? Error, LoginResponse? Data)> RegisterAsync(RegisterRequest request)
@@ -150,8 +152,9 @@ public class AuthService : IAuthService
         {
             if (!user.IsActive)
                 return (false, "Tài khoản đã bị khóa.", null);
-            var token = GenerateToken(user);
-            return (true, null, BuildResponse(user, token));
+var token = GenerateToken(user);
+        await _notifications.AddAsync("Register", $"Người dùng mới đăng ký: {user.UserName}", user.UserName);
+        return (true, null, BuildResponse(user, token));
         }
 
         // Chưa có tài khoản -> tự động tạo

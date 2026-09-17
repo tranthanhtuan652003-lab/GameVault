@@ -292,9 +292,6 @@ function GameForm({
   const [developers, setDevelopers] = useState<DeveloperDto[]>([]);
   const [publishers, setPublishers] = useState<PublisherDto[]>([]);
   const [submitting, setSubmitting] = useState(false);
-  const [rawgQuery, setRawgQuery] = useState("");
-  const [rawgResults, setRawgResults] = useState<unknown[]>([]);
-  const [searchingRawg, setSearchingRawg] = useState(false);
 
   const existing = editingId != null ? games.find((g) => g.id === editingId) : null;
   const isEdit = existing != null;
@@ -344,28 +341,6 @@ function GameForm({
 
   const toggle = (arr: number[], setArr: (v: number[]) => void, id: number) =>
     setArr(arr.includes(id) ? arr.filter((x) => x !== id) : [...arr, id]);
-
-  const searchRawg = async () => {
-    if (!rawgQuery.trim()) return;
-    setSearchingRawg(true);
-    try {
-      const results = await api.admin.externalSearch(rawgQuery, 5, token);
-      setRawgResults(results);
-    } catch {
-      toast("Không tìm thấy kết quả từ RAWG", "error");
-    } finally {
-      setSearchingRawg(false);
-    }
-  };
-
-  const handleImportRawg = (item: Record<string, unknown>) => {
-    if (item.name) setTitle(item.name as string);
-    if (item.backgroundImage) setCoverImage(item.backgroundImage as string);
-    if (item.description) setDescription(item.description as string);
-    setRawgResults([]);
-    setRawgQuery("");
-    toast("Đã nhập dữ liệu từ RAWG");
-  };
 
   const handleGalleryFiles = async (e: React.ChangeEvent<HTMLInputElement>) => {
     const files = Array.from(e.target.files ?? []);
@@ -479,62 +454,6 @@ function GameForm({
       <h2 className="mb-4 text-lg font-bold text-ink">
         {editingId != null ? "Sửa game" : "Thêm game mới"}
       </h2>
-
-      <div className="mb-4">
-        <label className="mb-1 block text-sm font-medium text-ink">Tìm trên RAWG</label>
-        <div className="flex gap-2">
-          <input
-            value={rawgQuery}
-            onChange={(e) => setRawgQuery(e.target.value)}
-            onKeyDown={(e) => e.key === "Enter" && searchRawg()}
-            placeholder="Tìm game trên RAWG..."
-            className="flex-1 h-10 rounded-lg border border-edge bg-surface-2 px-3 text-sm text-ink placeholder:text-ink-soft/60 focus:border-accent focus:outline-none"
-          />
-          <button
-            type="button"
-            onClick={searchRawg}
-            disabled={searchingRawg}
-            className="rounded-lg border border-edge px-4 py-2 text-sm font-semibold text-ink-soft transition hover:bg-surface-2 disabled:opacity-50"
-          >
-            {searchingRawg ? "Đang tìm..." : "Tìm"}
-          </button>
-        </div>
-        {rawgResults.length > 0 && (
-          <div className="mt-2 space-y-2">
-            {rawgResults.map((item, i) => {
-              const r = item as Record<string, unknown>;
-              return (
-                <div
-                  key={i}
-                  className="flex items-center gap-3 rounded-lg border border-edge bg-surface-2 p-3"
-                >
-                  {!!r.backgroundImage && (
-                    <div className="relative h-10 w-16 shrink-0 overflow-hidden rounded object-cover">
-                      <Image
-                        src={r.backgroundImage as string}
-                        alt=""
-                        fill
-                        sizes="64px"
-                        className="object-cover"
-                      />
-                    </div>
-                  )}
-                  <div className="flex-1">
-                    <p className="text-sm font-semibold text-ink">{r.name as string}</p>
-                  </div>
-                  <button
-                    type="button"
-                    onClick={() => handleImportRawg(r)}
-                    className="rounded-lg bg-accent/10 px-3 py-1 text-xs font-semibold text-accent transition hover:bg-accent/20"
-                  >
-                    Nhập
-                  </button>
-                </div>
-              );
-            })}
-          </div>
-        )}
-      </div>
 
       <form onSubmit={handleSubmit} className="space-y-4">
         <div className="grid gap-4 sm:grid-cols-2">

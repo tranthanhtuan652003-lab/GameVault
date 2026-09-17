@@ -27,6 +27,62 @@ export function ReviewsSection({
   const [comment, setComment] = useState("");
   const [submitting, setSubmitting] = useState(false);
   const [purchaseError, setPurchaseError] = useState(false);
+  const [editingId, setEditingId] = useState<number | null>(null);
+  const [editRating, setEditRating] = useState(5);
+  const [editComment, setEditComment] = useState("");
+  const [editSubmitting, setEditSubmitting] = useState(false);
+  const [deletingId, setDeletingId] = useState<number | null>(null);
+
+  const myReview = user ? reviews.find((r) => r.userId === user.id) : undefined;
+
+  const refresh = async () => {
+    const fresh = await api.reviews.forGame(gameId);
+    setReviews(fresh.items);
+    setStats(fresh.stats);
+  };
+
+  const startEdit = (review: ReviewDto) => {
+    setEditingId(review.id);
+    setEditRating(review.rating);
+    setEditComment(review.comment);
+  };
+
+  const cancelEdit = () => {
+    setEditingId(null);
+    setEditComment("");
+    setEditRating(5);
+  };
+
+  const saveEdit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!token || editingId == null) return;
+    setEditSubmitting(true);
+    try {
+      await api.reviews.update(editingId, editRating, editComment, token);
+      await refresh();
+      cancelEdit();
+      toast("Đã cập nhật đánh giá");
+    } catch (err) {
+      toast(err instanceof ApiError ? err.message : "Có lỗi xảy ra", "error");
+    } finally {
+      setEditSubmitting(false);
+    }
+  };
+
+  const removeReview = async (review: ReviewDto) => {
+    if (!token) return;
+    if (!confirm("Xóa đánh giá của bạn?")) return;
+    setDeletingId(review.id);
+    try {
+      await api.reviews.remove(review.id, token);
+      await refresh();
+      toast("Đã xóa đánh giá");
+    } catch (err) {
+      toast(err instanceof ApiError ? err.message : "Có lỗi xảy ra", "error");
+    } finally {
+      setDeletingId(null);
+    }
+  };
 
   const submit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -104,7 +160,7 @@ export function ReviewsSection({
 
         {/* Form + list */}
         <div>
-          {isAuthenticated && (
+          {isAuthenticated && !myReview && (
             <form
               onSubmit={submit}
               className="mb-8 rounded-2xl border border-edge bg-surface p-6"
@@ -138,35 +194,88 @@ export function ReviewsSection({
             </div>
           ) : (
             <ul className="space-y-4">
-              {reviews.map((review) => (
-                <li
-                  key={review.id}
-                  className="rounded-xl border border-edge bg-surface p-5"
-                >
-                  <div className="flex items-center justify-between">
-                    <div className="flex items-center gap-3">
-                      <span className="flex h-9 w-9 items-center justify-center rounded-full bg-accent/10 text-sm font-bold text-accent">
-                        {review.userName.charAt(0).toUpperCase()}
-                      </span>
-                      <div>
-                        <p className="text-sm font-semibold text-ink">
-                          {review.userName}
-                          {user?.id === review.userId && (
-                            <span className="ml-2 text-xs text-accent">(bạn)</span>
-                          )}
-                        </p>
-                        <p className="text-xs text-ink-soft">
-                          {formatDate(review.createdAt)}
-                        </p>
+              {reviews.map((review) => {
+                const isMine = user?.id === review.userId;
+                const isEditing = editingId === review.id;
+                return (
+                  <li
+                    key={review.id}
+                    className="rounded-xl border border-edge bg-surface p-5"
+                  >
+                    <div className="flex items-center justify-between">
+                      <div className="flex items-center gap-3">
+                        <span className="flex h-9 w-9 items-center justify-center rounded-full bg-accent/10 text-sm font-bold text-accent">
+                          {review.userName.charAt(0).toUpperCase()}
+                        </span>
+                        <div>
+                          <p className="text-sm font-semibold text-ink">
+                            {review.userName}
+                            {isMine && (
+                              <span className="ml-2 text-xs text-accent">(bạn)</span>
+                            )}
+                          </p>
+                          <p className="text-xs text-ink-soft">
+                            {formatDate(review.createdAt)}
+                            {review.updatedAt ? " · đã sửa" : ""}
+                          </p>
+                        </div>
                       </div>
+                      <StarRating
+                        value={isEditing ? editRating : review.rating}
+                        size={13}
+                      />
                     </div>
-                    <StarRating value={review.rating} size={13} />
-                  </div>
-                  <p className="mt-3 text-sm leading-relaxed text-ink-soft">
-                    {review.comment}
-                  </p>
-                </li>
-              ))}
+
+                    {isEditing ? (
+                      <form onSubmit={saveEdit} className="mt-4">
+                        <StarInput value={editRating} onChange={setEditRating} />
+                        <textarea
+                          value={editComment}
+                          onChange={(e) => setEditComment(e.target.value)}
+                          rows={3}
+                          maxLength={1000}
+                          className="mt-3 w-full rounded-lg border border-edge bg-canvas px-4 py-3 text-sm text-ink placeholder:text-ink-soft/60 focus:border-accent focus:outline-none"
+                        />
+                        <div className="mt-3 flex justify-end gap-2">
+                          <button
+                            type="button"
+                            onClick={cancelEdit}
+                            className="rounded-lg border border-edge px-4 py-1.5 text-sm font-semibold text-ink-soft transition hover:bg-surface-2"
+                          >
+                            Hủy
+                          </button>
+                          <Button type="submit" loading={editSubmitting}>
+                            Lưu
+                          </Button>
+                        </div>
+                      </form>
+                    ) : (
+                      <>
+                        <p className="mt-3 text-sm leading-relaxed text-ink-soft">
+                          {review.comment}
+                        </p>
+                        {isMine && (
+                          <div className="mt-3 flex gap-2">
+                            <button
+                              onClick={() => startEdit(review)}
+                              className="rounded-lg border border-edge px-3 py-1 text-xs font-semibold text-ink transition hover:bg-surface-2"
+                            >
+                              Sửa
+                            </button>
+                            <button
+                              onClick={() => removeReview(review)}
+                              disabled={deletingId === review.id}
+                              className="rounded-lg border border-danger/40 px-3 py-1 text-xs font-semibold text-danger transition hover:bg-danger/10 disabled:opacity-50"
+                            >
+                              {deletingId === review.id ? "Đang xóa..." : "Xóa"}
+                            </button>
+                          </div>
+                        )}
+                      </>
+                    )}
+                  </li>
+                );
+              })}
             </ul>
           )}
         </div>

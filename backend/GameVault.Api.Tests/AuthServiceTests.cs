@@ -21,7 +21,8 @@ public class AuthServiceTests
             })
             .Build(),
         new TestEnv(),
-        new FakeHttpClientFactory());
+        new FakeHttpClientFactory(),
+        new NotificationService(db.Db));
 
     [Fact]
     public async Task Register_CreatesUserWithCartAndWishlist()

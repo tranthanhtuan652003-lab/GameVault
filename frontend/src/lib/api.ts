@@ -20,6 +20,7 @@ import type {
   ReviewDto,
   GameKeyDto,
   ImportKeysResult,
+  NotificationDto,
 } from "./types";
 
 const API_URL = process.env.NEXT_PUBLIC_API_URL ?? "http://localhost:5080";
@@ -155,6 +156,14 @@ export const api = {
         body: { rating, comment },
         token,
       }),
+    update: (id: number, rating: number, comment: string, token: string) =>
+      request<ReviewDto>(`/api/Review/${id}`, {
+        method: "PUT",
+        body: { rating, comment },
+        token,
+      }),
+    remove: (id: number, token: string) =>
+      request<null>(`/api/Review/${id}`, { method: "DELETE", token }),
   },
 
   auth: {
@@ -405,6 +414,22 @@ export const api = {
       delete: (id: number, token: string) =>
         request<null>(`/api/Review/${id}`, { method: "DELETE", token }),
     },
+    notifications: {
+      list: (token: string, limit = 50) =>
+        request<NotificationDto[]>("/api/Admin/notifications", {
+          query: { limit },
+          token,
+        }),
+      unreadCount: (token: string) =>
+        request<{ count: number }>("/api/Admin/notifications/unread-count", {
+          token,
+        }),
+      markAllRead: (token: string) =>
+        request<null>("/api/Admin/notifications/read-all", {
+          method: "POST",
+          token,
+        }),
+    },
 
     createDeveloper: (name: string, token: string) =>
       request<DeveloperDto>("/api/Admin/developers", { method: "POST", body: { name }, token }),
@@ -416,9 +441,9 @@ export const api = {
       request<null>(`/api/Admin/publishers/${id}`, { method: "DELETE", token }),
 
     gameKeys: {
-      list: (gameId: number | undefined, token: string) =>
+      list: (gameId: number | undefined, search: string, token: string) =>
         request<GameKeyDto[]>("/api/Admin/game-keys", {
-          query: { gameId },
+          query: { gameId, search: search || undefined },
           token,
         }),
       generate: (gameId: number, count: number, token: string) =>

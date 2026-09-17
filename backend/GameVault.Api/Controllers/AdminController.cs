@@ -17,6 +17,7 @@ public class AdminController : ControllerBase
     private readonly IReviewService _reviews;
     private readonly IExternalGameApiService _external;
     private readonly IGameKeyService _gameKeys;
+    private readonly INotificationService _notifications;
 
     public AdminController(
         IAdminService admin,
@@ -24,7 +25,8 @@ public class AdminController : ControllerBase
         IOrderService orders,
         IReviewService reviews,
         IExternalGameApiService external,
-        IGameKeyService gameKeys)
+        IGameKeyService gameKeys,
+        INotificationService notifications)
     {
         _admin = admin;
         _games = games;
@@ -32,6 +34,7 @@ public class AdminController : ControllerBase
         _reviews = reviews;
         _external = external;
         _gameKeys = gameKeys;
+        _notifications = notifications;
     }
 
     [HttpGet("dashboard")]
@@ -137,8 +140,23 @@ public class AdminController : ControllerBase
     }
 
     [HttpGet("game-keys")]
-    public async Task<IActionResult> GameKeys([FromQuery] int? gameId = null) =>
-        Ok(Res.Ok("Danh sách key", await _gameKeys.ListAsync(gameId)));
+    public async Task<IActionResult> GameKeys([FromQuery] int? gameId = null, [FromQuery] string? search = null) =>
+        Ok(Res.Ok("Danh sách key", await _gameKeys.ListAsync(gameId, search)));
+
+    [HttpGet("notifications")]
+    public async Task<IActionResult> Notifications([FromQuery] int limit = 50) =>
+        Ok(Res.Ok("Danh sách thông báo", await _notifications.ListAsync(limit)));
+
+    [HttpGet("notifications/unread-count")]
+    public async Task<IActionResult> UnreadNotifications() =>
+        Ok(Res.Ok("Số thông báo chưa đọc", new { count = await _notifications.UnreadCountAsync() }));
+
+    [HttpPost("notifications/read-all")]
+    public async Task<IActionResult> ReadAllNotifications()
+    {
+        await _notifications.MarkAllReadAsync();
+        return Ok(Res.Ok("Đã đánh dấu tất cả thông báo đã đọc"));
+    }
 
     [HttpPost("game-keys/generate")]
     public async Task<IActionResult> GenerateGameKeys([FromBody] GenerateGameKeysRequest request)

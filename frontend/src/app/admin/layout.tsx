@@ -16,6 +16,7 @@ import {
 } from "@phosphor-icons/react";
 import { useAuth } from "@/lib/auth";
 import { cn } from "@/lib/cn";
+import { NotificationBell } from "@/components/admin/notification-bell";
 
 const navItems = [
   { href: "/admin", label: "Tổng quan", icon: ChartLineUp },
@@ -106,6 +107,9 @@ export default function AdminLayout({
       </aside>
 
       <div className="flex-1 overflow-x-hidden">
+        <div className="flex items-center justify-end border-b border-edge bg-surface px-6 py-2">
+          <NotificationBell />
+        </div>
         <div className="border-b border-edge bg-surface px-6 py-4 lg:hidden">
           <div className="flex gap-1 overflow-x-auto no-scrollbar">
             {navItems.map((item) => (

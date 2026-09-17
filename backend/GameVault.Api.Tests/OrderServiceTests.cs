@@ -16,7 +16,7 @@ public class OrderServiceTests
 
         var cartSvc = new CartService(db.Db);
         var keySvc = new GameKeyService(db.Db);
-        var orderSvc = new OrderService(db.Db, keySvc);
+        var orderSvc = new OrderService(db.Db, keySvc, new NotificationService(db.Db));
 
         await cartSvc.AddItemAsync(user.Id, new AddCartItemRequest { GameId = 1, Quantity = 2 });
         await cartSvc.AddItemAsync(user.Id, new AddCartItemRequest { GameId = 2, Quantity = 1 });
@@ -77,7 +77,7 @@ public class OrderServiceTests
     {
         using var db = new TestDb();
         var user = db.SeedUser("player1");
-        var orderSvc = new OrderService(db.Db, new GameKeyService(db.Db));
+        var orderSvc = new OrderService(db.Db, new GameKeyService(db.Db), new NotificationService(db.Db));
 
         var res = await orderSvc.CreateFromCartAsync(user.Id, NewOrder());
         Assert.False(res.Success);
@@ -96,7 +96,7 @@ public class OrderServiceTests
         db.Db.Games.Single().IsActive = false;
         db.Db.SaveChanges();
 
-        var orderSvc = new OrderService(db.Db, new GameKeyService(db.Db));
+        var orderSvc = new OrderService(db.Db, new GameKeyService(db.Db), new NotificationService(db.Db));
         var res = await orderSvc.CreateFromCartAsync(user.Id, NewOrder());
         Assert.False(res.Success);
         Assert.Contains("không còn khả dụng", res.Error);
@@ -114,7 +114,7 @@ public class OrderServiceTests
         var cartSvc = new CartService(db.Db);
         await cartSvc.AddItemAsync(user.Id, new AddCartItemRequest { GameId = 1, Quantity = 1 });
 
-        var orderSvc = new OrderService(db.Db, new GameKeyService(db.Db));
+        var orderSvc = new OrderService(db.Db, new GameKeyService(db.Db), new NotificationService(db.Db));
         var res = await orderSvc.CreateFromCartAsync(user.Id, NewOrder());
 
         Assert.True(res.Success, res.Error);
@@ -161,7 +161,7 @@ public class OrderServiceTests
         db.Db.GameKeys.RemoveRange(db.Db.GameKeys.Where(k => k.GameId == game.Id).Skip(1));
         db.Db.SaveChanges();
 
-        var orderSvc = new OrderService(db.Db, new GameKeyService(db.Db));
+        var orderSvc = new OrderService(db.Db, new GameKeyService(db.Db), new NotificationService(db.Db));
         var res = await orderSvc.CreateFromCartAsync(user.Id, NewOrder());
         Assert.False(res.Success);
         Assert.Contains("không đủ key", res.Error);

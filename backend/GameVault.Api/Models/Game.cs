@@ -14,7 +14,6 @@ public class Game
     public string CoverImage { get; set; } = string.Empty;
     public string TrailerUrl { get; set; } = string.Empty;
     public string SystemRequirements { get; set; } = string.Empty;
-    public string ExternalId { get; set; } = string.Empty;
     public bool IsActive { get; set; } = true;
     public int SalesCount { get; set; }
     public DateTime CreatedAt { get; set; } = DateTime.UtcNow;
