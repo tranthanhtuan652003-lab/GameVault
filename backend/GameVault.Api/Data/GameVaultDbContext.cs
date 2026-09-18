@@ -29,6 +29,7 @@ public class GameVaultDbContext : DbContext
     public DbSet<Payment> Payments => Set<Payment>();
     public DbSet<GameKey> GameKeys => Set<GameKey>();
     public DbSet<Notification> Notifications => Set<Notification>();
+    public DbSet<OtpCode> OtpCodes => Set<OtpCode>();
 
     protected override void OnModelCreating(ModelBuilder modelBuilder)
     {
@@ -325,6 +326,19 @@ public class GameVaultDbContext : DbContext
             e.Property(n => n.UserName).HasMaxLength(50);
             e.HasIndex(n => n.CreatedAt);
             e.HasIndex(n => n.IsRead);
+        });
+    }
+
+    private static void ConfigureOtpCodes(ModelBuilder mb)
+    {
+        mb.Entity<OtpCode>(e =>
+        {
+            e.ToTable("OtpCodes");
+            e.HasKey(o => o.Id);
+            e.Property(o => o.Email).HasMaxLength(150).IsRequired();
+            e.Property(o => o.Code).HasMaxLength(10).IsRequired();
+            e.HasIndex(o => o.Email);
+            e.HasIndex(o => o.CreatedAt);
         });
     }
 }

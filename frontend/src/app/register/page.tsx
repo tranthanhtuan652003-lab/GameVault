@@ -3,11 +3,11 @@
 import { useCallback, useEffect, useRef, useState } from "react";
 import { useRouter } from "next/navigation";
 import Link from "next/link";
-import { GameController, Eye, EyeSlash } from "@phosphor-icons/react";
+import { GameController, Eye, EyeSlash, ShieldCheck } from "@phosphor-icons/react";
 import { useAuth } from "@/lib/auth";
 import { useToast } from "@/components/ui/toast";
 import { Button } from "@/components/ui/button";
-import { ApiError } from "@/lib/api";
+import { api, ApiError } from "@/lib/api";
 
 export default function RegisterPage() {
   const router = useRouter();
@@ -21,6 +21,11 @@ export default function RegisterPage() {
   const [confirm, setConfirm] = useState("");
   const [showPw, setShowPw] = useState(false);
   const [loading, setLoading] = useState(false);
+  const [otpLoading, setOtpLoading] = useState(false);
+  const [otpSent, setOtpSent] = useState(false);
+  const [otpCode, setOtpCode] = useState("");
+  const [otpVerifying, setOtpVerifying] = useState(false);
+  const [otpCooldown, setOtpCooldown] = useState(0);
 
   const googleClientId = process.env.NEXT_PUBLIC_GOOGLE_CLIENT_ID || "";
 
@@ -88,8 +93,55 @@ export default function RegisterPage() {
     };
   }, [googleClientId]);
 
-  const submit = async (e: React.FormEvent) => {
-    e.preventDefault();
+  useEffect(() => {
+    if (otpCooldown > 0) {
+      const t = setTimeout(() => setOtpCooldown(c => c - 1), 1000);
+      return () => clearTimeout(t);
+    }
+  }, [otpCooldown]);
+
+  const handleSendOtp = async () => {
+    if (!email.includes("@")) {
+      toast("Vui lòng nhập email hợp lệ", "error");
+      return;
+    }
+    setOtpLoading(true);
+    try {
+      await api.auth.sendOtp(email);
+      setOtpSent(true);
+      setOtpCooldown(60);
+      toast("Đã gửi OTP đến email");
+    } catch (err) {
+      const msg =
+        err instanceof ApiError ? err.message : "Gửi OTP thất bại";
+      toast(msg, "error");
+    } finally {
+      setOtpLoading(false);
+    }
+  };
+
+  const handleVerifyOtp = async () => {
+    if (otpCode.length !== 6) {
+      toast("Vui lòng nhập đủ 6 chữ số OTP", "error");
+      return;
+    }
+    setOtpVerifying(true);
+    try {
+      await api.auth.verifyOtp(email, otpCode);
+      toast("Xác thực OTP thành công");
+      setOtpVerifying(false);
+      // Proceed to register now
+      submitRegister();
+    } catch (err) {
+      const msg =
+        err instanceof ApiError ? err.message : "Xác thực OTP thất bại";
+      toast(msg, "error");
+      setOtpVerifying(false);
+    }
+  };
+
+  const submitRegister = async (e?: React.FormEvent) => {
+    e?.preventDefault();
     if (password !== confirm) {
       toast("Mật khẩu xác nhận không khớp", "error");
       return;
@@ -108,6 +160,19 @@ export default function RegisterPage() {
     }
   };
 
+  const handleSubmit = async (e: React.FormEvent) => {
+    e.preventDefault();
+    if (!otpSent) {
+      handleSendOtp();
+      return;
+    }
+    if (otpCode.length !== 6) {
+      toast("Vui lòng nhập đủ 6 chữ số OTP", "error");
+      return;
+    }
+    await handleVerifyOtp();
+  };
+
   return (
     <div className="flex flex-1 items-center justify-center px-4 py-16">
       <div className="w-full max-w-md">
@@ -122,7 +187,7 @@ export default function RegisterPage() {
         </div>
 
         <form
-          onSubmit={submit}
+          onSubmit={handleSubmit}
           className="space-y-4 rounded-2xl border border-edge bg-surface p-6"
         >
           <Field label="Họ tên">
@@ -148,7 +213,7 @@ export default function RegisterPage() {
             <input
               type="email"
               value={email}
-              onChange={(e) => setEmail(e.target.value)}
+              onChange={(e) => { setEmail(e.target.value); if (otpSent) { setOtpSent(false); setOtpCode(""); } }}
               required
               className={inputClass}
               placeholder="email@example.com"
@@ -187,10 +252,44 @@ export default function RegisterPage() {
             />
           </Field>
 
+          {otpSent && (
+            <Field label="Mã OTP">
+              <div className="flex gap-2">
+                <input
+                  type="text"
+                  maxLength={6}
+                  value={otpCode}
+                  onChange={(e) => setOtpCode(e.target.value.replace(/\D/g, ""))}
+                  required
+                  className={inputClass}
+                  placeholder="000000"
+                />
+                <Button
+                  type="button"
+                  variant="outline"
+                  size="lg"
+                  onClick={handleVerifyOtp}
+                  loading={otpVerifying}
+                  disabled={otpVerifying || otpCode.length !== 6}
+                  className="shrink-0"
+                >
+                  <ShieldCheck size={18} weight="fill" className="mr-1" />
+                  Xác minh
+                </Button>
+              </div>
+            </Field>
+          )}
+
           <Button type="submit" size="lg" className="w-full" loading={loading}>
-            Đăng ký
+            {otpSent ? "Xác minh & Đăng ký" : otpLoading ? "Đang gửi OTP..." : "Đăng ký"}
           </Button>
         </form>
+
+        {otpSent && otpCooldown > 0 && (
+          <p className="mt-3 text-center text-xs text-ink-soft">
+            Gửi lại OTP sau {otpCooldown}s
+          </p>
+        )}
 
         {googleClientId && (
           <div className="mt-6">

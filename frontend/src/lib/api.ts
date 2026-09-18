@@ -1,6 +1,5 @@
 import type {
   ApiResponse,
-  BankTransferInfoDto,
   CartDto,
   DashboardDto,
   GameCreateRequest,
@@ -177,6 +176,16 @@ export const api = {
         method: "POST",
         body: data,
       }),
+    sendOtp: (email: string) =>
+      request<{ success: boolean; message: string }>("/api/Auth/send-otp", {
+        method: "POST",
+        body: { email },
+      }),
+    verifyOtp: (email: string, code: string) =>
+      request<{ success: boolean; message: string }>("/api/Auth/verify-otp", {
+        method: "POST",
+        body: { email, code },
+      }),
     google: (idToken: string) =>
       request<LoginResponse>("/api/Auth/google", {
         method: "POST",
@@ -282,13 +291,6 @@ export const api = {
   },
 
   payment: {
-    bankTransferInfo: (orderId: number, token: string) =>
-      request<BankTransferInfoDto>(`/api/Payment/bank-transfer/${orderId}`, { token }),
-    bankTransferStatus: (orderId: number, token: string) =>
-      request<{ status: string; paidAt: boolean }>(
-        `/api/Payment/bank-transfer/status/${orderId}`,
-        { token }
-      ),
     momoPaymentUrl: (orderId: number, token: string) =>
       request<{ paymentUrl: string | null; simulate: boolean }>(
         `/api/Payment/momo/payment-url`,
@@ -346,11 +348,6 @@ export const api = {
       request<null>(`/api/Admin/orders/${id}/status`, {
         method: "PUT",
         body: { status },
-        token,
-      }),
-    confirmBankTransfer: (id: number, token: string) =>
-      request<null>(`/api/Admin/orders/${id}/confirm-bank-transfer`, {
-        method: "POST",
         token,
       }),
     developers: (token: string) =>
