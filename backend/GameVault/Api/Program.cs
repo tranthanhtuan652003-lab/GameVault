@@ -25,6 +25,11 @@ if (connStr.StartsWith("postgresql://", StringComparison.OrdinalIgnoreCase) ||
     connStr = ToNpgsqlConnectionString(connStr);
 }
 
+// Chuẩn hoá Host=. hoặc Server=. (thói quen SQL Server) sang localhost để tránh SocketException
+connStr = connStr
+    .Replace("Host=.", "Host=localhost", StringComparison.OrdinalIgnoreCase)
+    .Replace("Server=.", "Server=localhost", StringComparison.OrdinalIgnoreCase);
+
 builder.Services.AddDbContext<GameVaultDbContext>(options =>
     options.UseNpgsql(connStr));
 
