@@ -37,20 +37,17 @@ builder.Services.AddScoped<IGameService, GameService>();
 builder.Services.AddScoped<ICartService, CartService>();
 builder.Services.AddScoped<IWishlistService, WishlistService>();
 builder.Services.AddScoped<IOrderService, OrderService>();
-builder.Services.AddScoped<IReviewService, ReviewService>();
-builder.Services.AddScoped<IAdminService, AdminService>();
-builder.Services.AddScoped<IBankTransferService, BankTransferService>();
-builder.Services.AddScoped<IMoMoService, MoMoService>();
-builder.Services.AddScoped<IGameKeyService, GameKeyService>();
-builder.Services.AddScoped<INotificationService, NotificationService>();
-builder.Services.AddHttpClient<IExternalGameApiService, ExternalGameApiService>();
-builder.Services.AddHttpClient();
+    builder.Services.AddScoped<IReviewService, ReviewService>();
+    builder.Services.AddScoped<IAdminService, AdminService>();
+    builder.Services.AddScoped<IMoMoService, MoMoService>();
+    builder.Services.AddScoped<IGameKeyService, GameKeyService>();
+    builder.Services.AddScoped<INotificationService, NotificationService>();
+    builder.Services.AddHttpClient<IExternalGameApiService, ExternalGameApiService>();
+    builder.Services.AddHttpClient();
 
-// Bank transfer / MoMo options
-builder.Services.Configure<BankTransferOptions>(
-    builder.Configuration.GetSection("BankTransfer"));
-builder.Services.Configure<MoMoOptions>(
-    builder.Configuration.GetSection("MoMo"));
+    // MoMo options
+    builder.Services.Configure<MoMoOptions>(
+        builder.Configuration.GetSection("MoMo"));
 
 // Controllers
 builder.Services.AddControllers()

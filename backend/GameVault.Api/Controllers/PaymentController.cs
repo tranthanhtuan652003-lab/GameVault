@@ -11,37 +11,14 @@ namespace GameVault.Api.Controllers;
 public class PaymentController : ControllerBase
 {
     private readonly IOrderService _orders;
-    private readonly IBankTransferService _bankTransfer;
     private readonly IMoMoService _moMo;
 
     public PaymentController(
         IOrderService orders,
-        IBankTransferService bankTransfer,
         IMoMoService moMo)
     {
         _orders = orders;
-        _bankTransfer = bankTransfer;
         _moMo = moMo;
-    }
-
-    [Authorize]
-    [HttpGet("bank-transfer/{orderId:int}")]
-    public async Task<IActionResult> GetBankTransferInfo(int orderId)
-    {
-        var userId = GetUserId();
-        var info = await _bankTransfer.GetBankTransferInfoAsync(orderId, userId);
-        if (info == null) return NotFound(Res.Fail("Không tìm thấy thông tin chuyển khoản."));
-        return Ok(Res.Ok("Thông tin chuyển khoản", info));
-    }
-
-    [Authorize]
-    [HttpGet("bank-transfer/status/{orderId:int}")]
-    public async Task<IActionResult> GetBankTransferStatus(int orderId)
-    {
-        var userId = GetUserId();
-        var info = await _bankTransfer.GetBankTransferInfoAsync(orderId, userId);
-        if (info == null) return NotFound(Res.Fail("Không tìm thấy đơn hàng."));
-        return Ok(Res.Ok("Trạng thái thanh toán", new { status = info.Status, paidAt = info.Status == "Paid" }));
     }
 
     [Authorize]

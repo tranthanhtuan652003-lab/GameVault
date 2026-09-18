@@ -11,7 +11,6 @@ public interface IOrderService
     Task<List<OrderDto>> GetUserOrdersAsync(int userId);
     Task<OrderDto?> GetOrderAsync(int userId, int orderId, bool isAdmin = false);
     Task<(bool Success, string? Error)> UpdateStatusAsync(int orderId, string status);
-    Task<(bool Success, string? Error)> ConfirmBankTransferAsync(int orderId, int userId);
     Task<(bool Success, string? Error)> DeliverKeysForPaidOrderAsync(int orderId);
     Task<(bool Success, string? Error)> CompletePaidOrderAsync(int orderId, bool bumpSales);
 }
@@ -100,16 +99,7 @@ public class OrderService : IOrderService
         var transactionId = "DEMO-" + Guid.NewGuid().ToString("N")[..12].ToUpper();
         var paidAt = DateTime.UtcNow;
 
-        if (paymentMethod == "BankTransfer")
-        {
-            // Chuyển khoản thủ công: chờ admin xác nhận
-            paymentStatus = "Pending";
-            transactionId = "BANK-" + Guid.NewGuid().ToString("N")[..12].ToUpper();
-            order.Status = "Pending";
-            order.PaymentStatus = "Pending";
-            paidAt = default;
-        }
-        else if (paymentMethod == "MoMo")
+        if (paymentMethod == "MoMo")
         {
             // MoMo: chờ callback từ cổng thanh toán
             paymentStatus = "Pending";
@@ -215,29 +205,6 @@ public class OrderService : IOrderService
 
         order.Status = status;
         await _db.SaveChangesAsync();
-        return (true, null);
-    }
-
-    public async Task<(bool Success, string? Error)> ConfirmBankTransferAsync(int orderId, int userId)
-    {
-        var order = await _db.Orders
-            .Include(o => o.Payments)
-            .FirstOrDefaultAsync(o => o.Id == orderId && o.UserId == userId);
-
-        if (order == null) return (false, "Không tìm thấy đơn hàng.");
-
-        var payment = order.Payments.FirstOrDefault(p => p.Method == "BankTransfer");
-        if (payment == null) return (false, "Đơn hàng không phải phương thức chuyển khoản.");
-
-        payment.Status = "Paid";
-        payment.PaidAt = DateTime.UtcNow;
-        order.PaymentStatus = "Paid";
-        order.PaidAt = DateTime.UtcNow;
-        order.Status = "Processing";
-
-        var (deliverOk, deliverErr) = await DeliverKeysForPaidOrderAsync(order.Id);
-        if (!deliverOk) return (false, deliverErr);
-
         return (true, null);
     }
 

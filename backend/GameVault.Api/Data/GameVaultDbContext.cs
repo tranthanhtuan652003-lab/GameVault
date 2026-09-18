@@ -287,10 +287,6 @@ public class GameVaultDbContext : DbContext
             e.Property(p => p.Amount).HasPrecision(18, 2).IsRequired();
             e.Property(p => p.Status).HasMaxLength(30).IsRequired();
             e.Property(p => p.TransactionId).HasMaxLength(100).IsRequired();
-            e.Property(p => p.BankName).HasMaxLength(100);
-            e.Property(p => p.BankAccountNumber).HasMaxLength(50);
-            e.Property(p => p.BankAccountHolder).HasMaxLength(200);
-            e.Property(p => p.TransferContent).HasMaxLength(300);
             e.Property(p => p.MoMoTransId).HasMaxLength(100);
             e.Property(p => p.MoMoResultCode).HasMaxLength(10);
             e.Property(p => p.MoMoPayType).HasMaxLength(50);

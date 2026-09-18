@@ -1,6 +1,5 @@
 import type {
   ApiResponse,
-  BankTransferInfoDto,
   CartDto,
   DashboardDto,
   GameCreateRequest,
@@ -282,13 +281,6 @@ export const api = {
   },
 
   payment: {
-    bankTransferInfo: (orderId: number, token: string) =>
-      request<BankTransferInfoDto>(`/api/Payment/bank-transfer/${orderId}`, { token }),
-    bankTransferStatus: (orderId: number, token: string) =>
-      request<{ status: string; paidAt: boolean }>(
-        `/api/Payment/bank-transfer/status/${orderId}`,
-        { token }
-      ),
     momoPaymentUrl: (orderId: number, token: string) =>
       request<{ paymentUrl: string | null; simulate: boolean }>(
         `/api/Payment/momo/payment-url`,
