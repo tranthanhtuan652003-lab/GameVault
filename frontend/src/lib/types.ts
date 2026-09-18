@@ -152,6 +152,19 @@ export interface OrderDto {
   transactionId?: string | null;
 }
 
+export interface BankTransferInfoDto {
+  orderId: number;
+  orderNumber: string;
+  amount: number;
+  bankName: string;
+  bankAccountNumber: string;
+  bankAccountHolder: string;
+  bankBranch: string;
+  transferContent: string;
+  qrCodeUrl: string;
+  status: string;
+}
+
 export interface ReviewDto {
   id: number;
   rating: number;
